@@ -1,20 +1,12 @@
 import os
 from email.policy import default
+from tkinter import StringVar
 from typing import List
-
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 load_dotenv()
-
-# Initialize the button states
-button_chain_states = {
-    'SOL': True,
-    'ETH': False,
-    'TRX': False
-}
-
 
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -64,42 +56,23 @@ The ⚙️ Setup section can be used to connect or generate a wallet for each ch
         reply_markup=chain_menu_keyboard(context)
     )
 
-
-def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE) -> str:
-    return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
-
-
-
-# First Menu
-async def first_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def menu_generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(first_menu_message(),
-                                  reply_markup=first_menu_keyboard())
+    cryptoChoosen = query.data.split('_')[-1]
+    print("Menu generating wallet for " + cryptoChoosen + "...")
+    print(query.data)
+    print(context.user_data)
+    message = "Generating wallet for " + cryptoChoosen + "..."
+    await query.edit_message_text(message, reply_markup=generate_menu_wallet_keyboard(context, "chain", cryptoChoosen))
 
-
-# Second Menu
-async def second_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(second_menu_message(),
-                                  reply_markup=second_menu_keyboard())
-
-
-# Handlers for submenus (you can expand these as needed)
-async def first_submenu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("You selected Submenu 1-1. Here are your options:",
-                                  reply_markup=return_to_first_keyboard())
-
-
-async def second_submenu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("You selected Submenu 2-1. Here are your options:",
-                                  reply_markup=return_to_second_keyboard())
-
+    print("Generating wallet for " + query.data.split('_')[-1] + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text("Generating wallet for " + query.data.split('_')[-1] + "...", reply_markup=generate_wallet_keyboard(context))
 
 # Error handling
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -110,8 +83,31 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 def button_bot_name() -> list[InlineKeyboardButton]:
     return [InlineKeyboardButton("ProtoBotTrader", callback_data="none")]
 
-
 # Keyboards
+def generate_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='return_to_chain')],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def generate_menu_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, call_origin, crypto) -> InlineKeyboardMarkup:
+    callback_generate = 'generate_wallet_' + crypto
+    connect_wallet = 'connect_wallet_' + crypto
+    print(callback_generate)
+
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='toggle_chain_menu')],
+        [InlineKeyboardButton("🔑 Generate Wallet", callback_data=callback_generate),
+         InlineKeyboardButton("🔗 Connect Wallet", callback_data=connect_wallet)]
+    ]
+
+    return InlineKeyboardMarkup(keyboard)
+
+def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE) -> str:
+    return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
+
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
@@ -142,12 +138,18 @@ def wallet_menu_keyboard() -> InlineKeyboardMarkup:
 def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
         [
             InlineKeyboardButton(get_button_text('SOL', context), callback_data='toggle_chain_SOL'),
             InlineKeyboardButton(get_button_text('ETH', context), callback_data='toggle_chain_ETH'),
             InlineKeyboardButton(get_button_text('TRX', context), callback_data='toggle_chain_TRX')
         ],
-        [InlineKeyboardButton("🔙 Return", callback_data='main')]  # Return to main menu
+        [InlineKeyboardButton("▼ Generate or connect a wallet ▼", callback_data='none')],
+        [
+            InlineKeyboardButton("⚙ SOL", callback_data='menu_generate_wallet_SOL'),
+            InlineKeyboardButton("⚙ ETH", callback_data='menu_generate_wallet_ETH'),
+            InlineKeyboardButton("⚙ TRX", callback_data='menu_generate_wallet_TRX')
+        ],
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -208,15 +210,12 @@ if __name__ == '__main__':
     # Handlers
     application.add_handler(CommandHandler('start', start))
     application.add_handler(CallbackQueryHandler(main_menu, pattern='main'))
-    application.add_handler(CallbackQueryHandler(first_menu, pattern='m1'))
-    application.add_handler(CallbackQueryHandler(second_menu, pattern='m2'))
-    application.add_handler(CallbackQueryHandler(first_submenu, pattern='m1_1'))
-    application.add_handler(CallbackQueryHandler(second_submenu, pattern='m2_1'))
-    application.add_handler(CallbackQueryHandler(second_submenu, pattern='m2_2'))
-    application.add_handler(CallbackQueryHandler(second_submenu, pattern='m1_2'))
+    application.add_handler(CallbackQueryHandler(wallet_menu, pattern='return_to_wallet'))
+    application.add_handler(CallbackQueryHandler(generate_wallet, pattern='generate_wallet_.*'))
 
     application.add_handler(CallbackQueryHandler(wallet_menu, pattern='wallet'))
     application.add_handler(CallbackQueryHandler(chain_menu, pattern='toggle_chain_.*'))
+    application.add_handler(CallbackQueryHandler(menu_generate_wallet, pattern='menu_generate_wallet_.*'))
 
     application.add_error_handler(error)
 
