@@ -1,13 +1,9 @@
 import os
-from ast import parse
-from itertools import chain
-from os.path import split
-from typing import AnyStr
+from decimal import Context
 
 from dotenv import load_dotenv
-from setuptools.command.build_ext import if_dl
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 load_dotenv()
 
@@ -369,7 +365,7 @@ async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     print(query.data)
     print(context.user_data)
     await query.edit_message_text(text_wallet_menu(crypto, context,user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
 async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -382,71 +378,83 @@ async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     print("Confirm Trade wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, context,user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
 async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id  = query.from_user.id
     await query.answer()
-    if crypto in context.user_data['wallets']:
-        context.user_data['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value'] = not \
-            context.user_data['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value']
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value']
     print("Dupe Buy wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
 async def auto_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
     await query.answer()
-    if crypto in context.user_data['wallets']:
-        context.user_data['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value'] = not \
-            context.user_data['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value'] = not \
+            user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
     print("Auto Buy wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
 # Function to initiate the market cap threshold setting process
 async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Send a message prompting the user to reply with their desired minimum market cap
+    crypto = update.callback_query.data.split('_')[-1]
+    user_id = update.callback_query.from_user.id
     prompt_message = await update.message.reply_text(
         "Reply to this message with your desired minimum market cap threshold in USD. Minimum is $1! ⚠️"
     )
 
     # Store the prompt message ID to track replies and to delete it later
-    context.user_data['prompt_message_id'] = prompt_message.message_id
+    user_data[user_id]['prompt_message_id'] = prompt_message.message_id
+    user_data[user_id]['setting_min_mc'] = True
+    user_data[user_id]['crypto_choosen'] = crypto
 
     # Function to handle the user's reply and update the min_mc value
 
 
 async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
-    user_reply = update.message.text
-    # Validate the user's input
-    try:
-        min_market_cap = int(user_reply)
-        if min_market_cap < 1:
-            await update.message.reply_text("The minimum market cap must be at least $1. Please try again.")
+
+    if user_data[user_id]['setting_min_mc'] :
+        user_reply = update.message.text
+        crypto = user_data[user_id]['crypto_choosen']
+        # Validate the user's input
+        try:
+            min_market_cap = int(user_reply)
+            if min_market_cap < 1:
+                await update.message.reply_text("The minimum market cap must be at least $1. Please try again.")
+                return
+        except ValueError:
+            await update.message.reply_text("Invalid input. Please enter a valid number.")
             return
-    except ValueError:
-        await update.message.reply_text("Invalid input. Please enter a valid number.")
-        return
 
-    # Update the user's minimum market cap in the user_data dictionary
-    context.user_data['wallets'][user_id]['BUY']['int']['MIN_MC']['value'] = min_market_cap
+        # Update the user's minimum market cap in the user_data dictionary
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['MIN_MC']['value'] = min_market_cap
 
-    # Delete the prompt message
-    prompt_message_id = context.user_data.get('prompt_message_id')
-    if prompt_message_id:
-        await context.bot.delete_message(chat_id=update.message.chat_id, message_id=prompt_message_id)
+        # Delete the prompt message
+        prompt_message_id = user_data[user_id]['prompt_message_id']
+        if prompt_message_id:
+            await context.bot.delete_message(chat_id=update.message.chat_id, message_id=prompt_message_id)
 
-    # Confirm the update to the user
-    await update.message.reply_text(f"Your minimum market cap has been set to ${min_market_cap}.")
+        # Confirm the update to the user
+        await update.message.reply_text(f"Your minimum market cap has been set to ${min_market_cap}.")
+
+        # Clear the state
+        user_data[user_id]['setting_min_mc'] = False
+        user_data[user_id]['crypto'] = None
 
 
 # Error handling
@@ -460,37 +468,37 @@ def button_bot_name() -> list[InlineKeyboardButton]:
 
 
 # Keyboards
-def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
+def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='config_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("CONFIRM_TRADE", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("CONFIRM_TRADE", context, crypto, user_id),
                               callback_data='confirm_trade_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("DUPE_BUY", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("DUPE_BUY", context, crypto, user_id),
                               callback_data='dupe_buy_wallet_' + crypto),
-         InlineKeyboardButton(get_button_buy_config_name("AUTO_BUY", context, crypto),
+         InlineKeyboardButton(get_button_buy_config_name("AUTO_BUY", context, crypto, user_id),
                               callback_data='auto_buy_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC", context, crypto, user_id),
                               callback_data='min_mc_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC", callback_data='erase_min_mc_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MAX_MC", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("MAX_MC", context, crypto, user_id),
                               callback_data='max_mc_wallet_' + crypto),
          InlineKeyboardButton("⌫ Max MC", callback_data='erase_max_mc_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ", context, crypto, user_id),
                               callback_data='min_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min Liq", callback_data='erase_min_liq_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MAX_LIQ", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("MAX_LIQ", context, crypto, user_id),
                               callback_data='max_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Max Liq", callback_data='erase_max_liq_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC_LIQ", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC_LIQ", context, crypto, user_id),
                               callback_data='min_mc_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC/Liq", callback_data='erase_min_mc_liq_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("GAS_DELTA", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("GAS_DELTA", context, crypto, user_id),
                               callback_data='gas_delta_wallet_' + crypto),
          InlineKeyboardButton("⌫ Gas Delta", callback_data='erase_gd_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("PIA", context, crypto), callback_data='pia_wallet_' + crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("PIA", context, crypto, user_id), callback_data='pia_wallet_' + crypto),
          InlineKeyboardButton("⌫ PIA", callback_data='erase_pia_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("SLIPPAGE", context, crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("SLIPPAGE", context, crypto, user_id),
                               callback_data='slippage_wallet_' + crypto),
          InlineKeyboardButton("⌫ Slippage", callback_data='erase_slippage_wallet_' + crypto)],
     ]
@@ -596,24 +604,24 @@ def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE, user_id
         return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
 
 
-def get_button_buy_config_name(param_name: str, context: ContextTypes.DEFAULT_TYPE, crypto) -> str:
-    if param_name in context.user_data['wallets'][crypto]['BUY']['bool']:
-        text_to_show = context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['text']
-        return "✅ " + text_to_show if context.user_data['wallets'][crypto]['BUY']['bool'][param_name][
+def get_button_buy_config_name(param_name: str, crypto, user_id) -> str:
+    if param_name in user_data[user_id]['wallets'][crypto]['BUY']['bool']:
+        text_to_show = user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['text']
+        return "✅ " + text_to_show if user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name][
             'value'] else "❌ " + text_to_show
-    elif param_name in context.user_data['wallets'][crypto]['BUY']['int']:
-        text_to_show = context.user_data['wallets'][crypto]['BUY']['int'][param_name]['text']
+    elif param_name in user_data[user_id]['wallets'][crypto]['BUY']['int']:
+        text_to_show = user_data[user_id]['wallets'][crypto]['BUY']['int'][param_name]['text']
         return "✏️ " + text_to_show
 
 
-def get_button_menu_param_name(param_name: str, context: ContextTypes.DEFAULT_TYPE, crypto, type: str) -> str:
+def get_button_menu_param_name(param_name: str, crypto, type: str, user_id) -> str:
     if type == 'bool':
-        return context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ " if \
-            context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['value'] else \
-            context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
+        return user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ " if \
+            user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['value'] else \
+            user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
     elif type == 'int':
-        return context.user_data['wallets'][crypto]['BUY']['int'][param_name]['name'] + str(
-            context.user_data['wallets'][crypto]['BUY']['int'][param_name]['value'])
+        return user_data[user_id]['wallets'][crypto]['BUY']['int'][param_name]['name'] + str(
+            user_data[user_id]['wallets'][crypto]['BUY']['int'][param_name]['value'])
 
 
 def get_button_chain_name(chain_name: str) -> str:
@@ -762,6 +770,9 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(confirm_trade_wallet, pattern='confirm_trade_wallet_.*'))
     application.add_handler(CallbackQueryHandler(dupe_buy_wallet, pattern='dupe_buy_wallet_.*'))
     application.add_handler(CallbackQueryHandler(auto_buy_wallet, pattern='auto_buy_wallet_.*'))
+
+    application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
+    application.add_handler(MessageHandler(filters.REPLY & filters.TEXT, set_market_cap))
     #
     # application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
     # application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
