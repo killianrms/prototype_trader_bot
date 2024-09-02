@@ -1,5 +1,6 @@
 import os
-from decimal import Context
+import json
+import re
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -12,12 +13,14 @@ user_data = {}
 
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.message.from_user.id not in user_data:
-        user_id = update.message.from_user.id
+    if  update.effective_user.id not in user_data:
+        user_id = update.effective_user.id
+        first_name = update.effective_user.first_name
         user_data[user_id] = {
-            'first_name' : update.message.from_user.first_name,
+            'first_name' : first_name,
             'id' : user_id
         }
+        print(user_data)
         user_data[user_id]['chain_states'] = {
             'SOL': True,
             'ETH': False,
@@ -222,13 +225,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 },
             },
         }
-        print(user_data[user_id])
-        print(update.callback_query)
+
+        user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+        print(user_data_json)
         await update.message.reply_text(main_menu_message(), reply_markup=main_menu_keyboard())
 
 
 # Main Menu
-async def main_menu(update: Update) -> None:
+async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(main_menu_message(), reply_markup=main_menu_keyboard())
@@ -248,7 +252,7 @@ async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     user_id = query.from_user.id
     await query.answer()
     print(query.data)
-    print(context.user_data)
+    print(user_data)
 
     # Toggle the specific button's state
     button_name = query.data.split('_')[-1]  # Extract the chain name from the callback data (e.g., 'SOL')
@@ -477,33 +481,33 @@ def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE, 
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='config_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("CONFIRM_TRADE", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("CONFIRM_TRADE", crypto, user_id),
                               callback_data='confirm_trade_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("DUPE_BUY", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("DUPE_BUY", crypto, user_id),
                               callback_data='dupe_buy_wallet_' + crypto),
-         InlineKeyboardButton(get_button_buy_config_name("AUTO_BUY", context, crypto, user_id),
+         InlineKeyboardButton(get_button_buy_config_name("AUTO_BUY", crypto, user_id),
                               callback_data='auto_buy_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC", crypto, user_id),
                               callback_data='min_mc_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC", callback_data='erase_min_mc_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MAX_MC", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("MAX_MC", crypto, user_id),
                               callback_data='max_mc_wallet_' + crypto),
          InlineKeyboardButton("⌫ Max MC", callback_data='erase_max_mc_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ",crypto, user_id),
                               callback_data='min_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min Liq", callback_data='erase_min_liq_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MAX_LIQ", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("MAX_LIQ", crypto, user_id),
                               callback_data='max_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Max Liq", callback_data='erase_max_liq_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC_LIQ", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC_LIQ", crypto, user_id),
                               callback_data='min_mc_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC/Liq", callback_data='erase_min_mc_liq_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("GAS_DELTA", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("GAS_DELTA", crypto, user_id),
                               callback_data='gas_delta_wallet_' + crypto),
          InlineKeyboardButton("⌫ Gas Delta", callback_data='erase_gd_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("PIA", context, crypto, user_id), callback_data='pia_wallet_' + crypto),
+        [InlineKeyboardButton(get_button_buy_config_name("PIA", crypto, user_id), callback_data='pia_wallet_' + crypto),
          InlineKeyboardButton("⌫ PIA", callback_data='erase_pia_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("SLIPPAGE", context, crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("SLIPPAGE", crypto, user_id),
                               callback_data='slippage_wallet_' + crypto),
          InlineKeyboardButton("⌫ Slippage", callback_data='erase_slippage_wallet_' + crypto)],
     ]
@@ -605,8 +609,12 @@ def generate_menu_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, call_origi
 
 
 def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> str:
+    print(chain_name)
+    print(user_id)
+    print(user_data[user_id]['chain_states'])
     if chain_name in user_data[user_id]['chain_states']:
-        return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
+        print(user_data[user_id]['chain_states'][chain_name])
+        return "🟢 " + chain_name if user_data[user_id]['chain_states'][chain_name] else "🔴 " + chain_name
 
 
 def get_button_buy_config_name(param_name: str, crypto, user_id) -> str:
@@ -621,6 +629,7 @@ def get_button_buy_config_name(param_name: str, crypto, user_id) -> str:
 
 def get_button_menu_param_name(param_name: str, crypto, type: str, user_id) -> str:
     if type == 'bool':
+        print(user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'])
         return user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ " if \
             user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['value'] else \
             user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
@@ -659,7 +668,7 @@ def wallet_menu_keyboard(context, user_id) -> InlineKeyboardMarkup:
     # verifier aussi si le wallet de la crypto a etait connecter ou generer
     for chain in user_data[user_id]['chain_states']:
         # si la chain est a true alors on affiche le bouton
-        if context.user_data['chain_states'][chain]:
+        if user_data[user_id]['chain_states'][chain]:
             keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_wallet_' + chain)])
     return InlineKeyboardMarkup(keyboard)
 
@@ -736,15 +745,22 @@ def text_wallet_menu(crypto, context,user_id) -> str:
     general_params = "📍 General"
     buy_params = "📌 Buy"
     for param in user_data[user_id]['wallets'][crypto]['BUY']['bool']:
-        buy_params += "\n" + get_button_menu_param_name(param, context, crypto, 'bool')
+        buy_params += "\n" + get_button_menu_param_name(param, crypto, 'bool', user_id)
     buy_params += "\n"
     for param in user_data[user_id]['wallets'][crypto]['BUY']['int']:
-        buy_params += "\n" + get_button_menu_param_name(param, context, crypto, 'int')
+        buy_params += "\n" + get_button_menu_param_name(param, crypto, 'int', user_id)
     sell_params = "📌 Sell"
     text = f"{adresse}\n{chain}\n{balance}\n\n{general_params}\n\n{buy_params}\n\n{sell_params}"
     return text
     # Main function to set up the bot
 
+
+def extract_user_data(update: Update) -> dict:
+    user = update.message.from_user
+    return {
+        'id': user.id,
+        'first_name': user.first_name,
+    }
 
 if __name__ == '__main__':
     # Replace 'YOUR_TOKEN_HERE' with your bot's token
