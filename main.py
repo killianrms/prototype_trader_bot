@@ -1,11 +1,16 @@
 import os
 from ast import parse
+from itertools import chain
+from os.path import split
+from typing import AnyStr
 
 from dotenv import load_dotenv
+from setuptools.command.build_ext import if_dl
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 load_dotenv()
+
 
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -16,7 +21,207 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             'ETH': False,
             'TRX': False,
         }
-    await update.message.reply_text(main_menu_message(), reply_markup=main_menu_keyboard())
+    if 'wallets' not in context.user_data:
+        context.user_data['wallets'] = {
+            'SOL': {
+                'BUY': {
+                    'bool': {
+                        'CONFIRM_TRADE': {
+                            'value': False,
+                            'text': "Confirm Trade",
+                            'name': "Confirm Trade Buy : "
+                        },
+                        'DUPE_BUY': {
+                            'value': False,
+                            'text': "Dupe Buy",
+                            'name': "Duplicate Buy : "
+                        },
+                        'AUTO_BUY': {
+                            'value': False,
+                            'text': "Auto Buy",
+                            'name': "Auto Buy : "
+                        },
+                    },
+                    'int': {
+                        'MIN_MC': {
+                            'value': 0,
+                            'text': "Min Mc",
+                            'name': "Min MCap : "
+                        },
+                        'MAX_MC': {
+                            'value': 0,
+                            'text': "Max Mc",
+                            'name': "Max MCap : "
+                        },
+                        'MIN_LIQ': {
+                            'value': 0,
+                            'text': "Min Liquidity",
+                            'name': "Min Liquidity : "
+                        },
+                        'MAX_LIQ': {
+                            'value': 0,
+                            'text': "Max Liquidity",
+                            'name': "Max Liquidity : "
+                        },
+                        'MIN_MC_LIQ': {
+                            'value': 0,
+                            'text': "Min Mc/Liq",
+                            'name': "Min MCap/Liq : "
+                        },
+                        'GAS_DELTA': {
+                            'value': 0,
+                            'text': "Gas Delta",
+                            'name': "Buy Gas Delta : "
+                        },
+                        'PIA': {
+                            'value': 0,
+                            'text': "Price Impact Alert",
+                            'name': "Price impact alert : "
+                        },
+                        'SLIPPAGE': {
+                            'value': 0,
+                            'text': "Slippage",
+                            'name': "Slippage : "
+                        },
+                    },
+                },
+                'SELL': {
+                },
+            },
+
+            'ETH': {
+                 'BUY': {
+                    'bool': {
+                        'CONFIRM_TRADE': {
+                            'value': False,
+                            'text': "Confirm Trade",
+                            'name': "Confirm Trade Buy : "
+                        },
+                        'DUPE_BUY': {
+                            'value': False,
+                            'text': "Dupe Buy",
+                            'name': "Duplicate Buy : "
+                        },
+                        'AUTO_BUY': {
+                            'value': False,
+                            'text': "Auto Buy",
+                            'name': "Auto Buy : "
+                        },
+                    },
+                    'int': {
+                        'MIN_MC': {
+                            'value': 0,
+                            'text': "Min Mc",
+                            'name': "Min MCap : "
+                        },
+                        'MAX_MC': {
+                            'value': 0,
+                            'text': "Max Mc",
+                            'name': "Max MCap : "
+                        },
+                        'MIN_LIQ': {
+                            'value': 0,
+                            'text': "Min Liquidity",
+                            'name': "Min Liquidity : "
+                        },
+                        'MAX_LIQ': {
+                            'value': 0,
+                            'text': "Max Liquidity",
+                            'name': "Max Liquidity : "
+                        },
+                        'MIN_MC_LIQ': {
+                            'value': 0,
+                            'text': "Min Mc/Liq",
+                            'name': "Min MCap/Liq : "
+                        },
+                        'GAS_DELTA': {
+                            'value': 0,
+                            'text': "Gas Delta",
+                            'name': "Buy Gas Delta : "
+                        },
+                        'PIA': {
+                            'value': 0,
+                            'text': "Price Impact Alert : ",
+                            'name': "Price impact alert : "
+                        },
+                        'SLIPPAGE': {
+                            'value': 0,
+                            'text': "Slippage",
+                            'name': "Slippage : "
+                        },
+                    },
+                },
+                'SELL': {
+                },
+            },
+
+            'TRX': {
+                 'BUY': {
+                    'bool': {
+                        'CONFIRM_TRADE': {
+                            'value': False,
+                            'text': "Confirm Trade",
+                            'name': "Confirm Trade Buy : "
+                        },
+                        'DUPE_BUY': {
+                            'value': False,
+                            'text': "Dupe Buy",
+                            'name': "Duplicate Buy : "
+                        },
+                        'AUTO_BUY': {
+                            'value': False,
+                            'text': "Auto Buy",
+                            'name': "Auto Buy : "
+                        },
+                    },
+                    'int': {
+                        'MIN_MC': {
+                            'value': 0,
+                            'text': "Min Mc",
+                            'name': "Min MCap : "
+                        },
+                        'MAX_MC': {
+                            'value': 0,
+                            'text': "Max Mc",
+                            'name': "Max MCap : "
+                        },
+                        'MIN_LIQ': {
+                            'value': 0,
+                            'text': "Min Liquidity",
+                            'name': "Min Liquidity : "
+                        },
+                        'MAX_LIQ': {
+                            'value': 0,
+                            'text': "Max Liquidity",
+                            'name': "Max Liquidity : "
+                        },
+                        'MIN_MC_LIQ': {
+                            'value': 0,
+                            'text': "Min Mc/Liq",
+                            'name': "Min MCap/Liq : "
+                        },
+                        'GAS_DELTA': {
+                            'value': 0,
+                            'text': "Gas Delta",
+                            'name': "Buy Gas Delta : "
+                        },
+                        'PIA': {
+                            'value': 0,
+                            'text': "Price Impact Alert : ",
+                            'name': "Price impact alert : "
+                        },
+                        'SLIPPAGE': {
+                            'value': 0,
+                            'text': "Slippage",
+                            'name': "Slippage : "
+                        },
+                    },
+                },
+                'SELL': {
+                },
+            },
+        }
+        await update.message.reply_text(main_menu_message(), reply_markup=main_menu_keyboard())
 
 
 # Main Menu
@@ -24,7 +229,6 @@ async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(main_menu_message(), reply_markup=main_menu_keyboard())
-
 
 
 # Wallets Menu
@@ -55,6 +259,8 @@ The ⚙️ Setup section can be used to connect or generate a wallet for each ch
         reply_markup=chain_menu_keyboard(context)
     )
 
+
+# Generate Wallet from Menu Wallet
 async def menu_generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -65,14 +271,19 @@ async def menu_generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     message = "Generating wallet for " + cryptoChoosen + "..."
     await query.edit_message_text(message, reply_markup=generate_menu_wallet_keyboard(context, "chain", cryptoChoosen))
 
+
+# Generate Wallet from Chain Menu
 async def generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     print("Generating wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text("Generating wallet for " + query.data.split('_')[-1] + "...", reply_markup=generate_wallet_keyboard(context))
+    await query.edit_message_text("Generating wallet for " + query.data.split('_')[-1] + "...",
+                                  reply_markup=generate_wallet_keyboard(context))
 
+
+# Generate Wallet from Wallet Menu
 async def generate_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
@@ -80,8 +291,11 @@ async def generate_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     print("Generating wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto),parse_mode="MarkdownV2", reply_markup=generate_from_wallet_keyboard(context, crypto))
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=generate_from_wallet_keyboard(context, crypto))
 
+
+# Show Wallet
 async def show_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -89,17 +303,23 @@ async def show_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     print("Showing wallet for " + cryptoChoosen + "...")
     print(query.data)
     print(context.user_data)
-    text = text_wallet_menu(cryptoChoosen)
-    await query.edit_message_text(text,  parse_mode="MarkdownV2", reply_markup=setting_wallet_keyboard(query.data.split('_')[-1]))
+    text = text_wallet_menu(cryptoChoosen, context)
+    await query.edit_message_text(text, parse_mode="MarkdownV2",
+                                  reply_markup=setting_wallet_keyboard(cryptoChoosen))
 
+
+# Connect Wallet from Chain Menu
 async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     print("Connecting wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text("Connecting wallet for " + query.data.split('_')[-1] + "...", reply_markup=generate_connect_wallet_keyboard(context))
+    await query.edit_message_text("Connecting wallet for " + query.data.split('_')[-1] + "...",
+                                  reply_markup=generate_connect_wallet_keyboard(context))
 
+
+# Connect Wallet from Wallet Menu
 async def connect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
@@ -107,17 +327,23 @@ async def connect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE
     print("Connecting wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto),parse_mode="MarkdownV2", reply_markup=generate_connect_from_wallet_keyboard(crypto))
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=generate_connect_from_wallet_keyboard(crypto))
 
-async  def disconnect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+# Disconnect Wallet from Wallet Menu
+async def disconnect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
     await query.answer()
     print("Disconnecting wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto),parse_mode="MarkdownV2", reply_markup=disconnect_from_wallet_keyboard(crypto))
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=disconnect_from_wallet_keyboard(crypto))
 
+
+# Config Wallet
 async def config_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
@@ -125,7 +351,34 @@ async def config_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     print("Config wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto),parse_mode="MarkdownV2", reply_markup=config_wallet_keyboard(crypto))
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=config_wallet_keyboard(crypto))
+
+
+# Config Buy Wallet
+async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    await query.answer()
+    print("Config buy wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+
+
+async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    await query.answer()
+    if crypto in context.user_data['wallets']:
+        context.user_data['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not \
+            context.user_data['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
+    print("Confirm Trade wallet for " + crypto + "...")
+    print(query.data)
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+
 
 # Error handling
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -136,16 +389,67 @@ async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 def button_bot_name() -> list[InlineKeyboardButton]:
     return [InlineKeyboardButton("ProtoBotTrader", callback_data="none")]
 
+
 # Keyboards
+def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='config_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("CONFIRM_TRADE", context, crypto),
+                              callback_data='confirm_trade_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("DUPE_BUY", context, crypto),
+                              callback_data='dupe_buy_wallet_' + crypto),
+         InlineKeyboardButton(get_button_buy_config_name("AUTO_BUY", context, crypto),
+                              callback_data='auto_buy_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC", context, crypto),
+                              callback_data='min_mc_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Min MC", callback_data='erase_min_mc_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("MAX_MC", context, crypto),
+                              callback_data='max_mc_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Max MC", callback_data='erase_max_mc_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ", context, crypto),
+                              callback_data='min_liq_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Min Liq", callback_data='erase_min_liq_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("MAX_LIQ", context, crypto),
+                              callback_data='max_liq_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Max Liq", callback_data='erase_max_liq_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_MC_LIQ", context, crypto),
+                              callback_data='min_mc_liq_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Min MC/Liq", callback_data='erase_min_mc_liq_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("GAS_DELTA", context, crypto),
+                              callback_data='gas_delta_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Gas Delta", callback_data='erase_gd_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("PIA", context, crypto), callback_data='pia_wallet_' + crypto),
+         InlineKeyboardButton("⌫ PIA", callback_data='erase_pia_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_buy_config_name("SLIPPAGE", context, crypto),
+                              callback_data='slippage_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Slippage", callback_data='erase_slippage_wallet_' + crypto)],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+
 def config_wallet_keyboard(crypto: str) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='show_wallet_'+crypto)],
-        [InlineKeyboardButton("❌ Anti MEV",  callback_data='anti_mev_wallet_'+crypto), InlineKeyboardButton("❌ Degen Mode 😈", callback_data='degen_mode_wallet_'+crypto)],
-        [InlineKeyboardButton("⚙ Buy",  callback_data='config_buy_wallet_'+crypto), InlineKeyboardButton("⚙ Sell", callback_data='config_sell_wallet_'+crypto)],
-        [InlineKeyboardButton("✏️Slippage",  callback_data='slippage_wallet_'+crypto), InlineKeyboardButton("⌫ Slippage", callback_data='erase_wallet_'+crypto)],
+        [InlineKeyboardButton("🔙 Return", callback_data='show_wallet_' + crypto)],
+        [InlineKeyboardButton("❌ Anti MEV", callback_data='anti_mev_wallet_' + crypto),
+         InlineKeyboardButton("❌ Degen Mode 😈", callback_data='degen_mode_wallet_' + crypto)],
+        [InlineKeyboardButton("⚙ Buy", callback_data='config_buy_wallet_' + crypto),
+         InlineKeyboardButton("⚙ Sell", callback_data='config_sell_wallet_' + crypto)],
     ]
     return InlineKeyboardMarkup(keyboard)
+
+
+def change_value_bool(context: ContextTypes.DEFAULT_TYPE, crypto: str, param_name: str) -> None:
+    if param_name in context.user_data['wallets'][crypto]['BUY']['bool']:
+        context.user_data['wallets'][crypto]['BUY']['bool'][param_name] = not context.user_data['wallets'][crypto]['bool'][
+            param_name]
+
+
+def change_value_int(context: ContextTypes.DEFAULT_TYPE, crypto: str, param_name: str, value: int) -> None:
+    if param_name in context.user_data['wallets'][crypto]['BUY']['int']:
+        context.user_data['wallets'][crypto]['BUY']['int'][param_name] = value
+
 
 def generate_connect_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
     keyboard = [
@@ -154,30 +458,37 @@ def generate_connect_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> Inli
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def generate_connect_from_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE,crypto) -> InlineKeyboardMarkup:
+
+def generate_connect_from_wallet_keyboard(crypto) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='show_wallet'+crypto)],
+        [InlineKeyboardButton("🔙 Return", callback_data='show_wallet' + crypto)],
     ]
     return InlineKeyboardMarkup(keyboard)
+
 
 def disconnect_from_wallet_keyboard(crypto) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='show_wallet_'+crypto)],
+        [InlineKeyboardButton("🔙 Return", callback_data='show_wallet_' + crypto)],
     ]
     return InlineKeyboardMarkup(keyboard)
+
 
 def setting_wallet_keyboard(crypto: str) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
-        #if wallet connected show disconnected wallet else  show connect wallet
-        [InlineKeyboardButton("Disconnect Wallet", callback_data='disconnect_from_wallet_'+crypto), InlineKeyboardButton("🔙 Return", callback_data='wallet')],
-        [InlineKeyboardButton("Generate Wallet", callback_data='generate_from_wallet_'+crypto), InlineKeyboardButton("Multi-Wallet", callback_data='menu_multi_wallet_'+crypto)],
-        [InlineKeyboardButton("📤 " + crypto, callback_data='withdraw'+crypto), InlineKeyboardButton("📥 Tokens", callback_data='withdraw_token_'+crypto)],
-        [InlineKeyboardButton("🔢 Buy KB",  callback_data='buy_kb_'+crypto), InlineKeyboardButton("⚙ Config", callback_data='config_wallet_'+crypto)],
+        [InlineKeyboardButton("Disconnect Wallet", callback_data='disconnect_from_wallet_' + crypto),
+         InlineKeyboardButton("🔙 Return", callback_data='wallet')],
+        [InlineKeyboardButton("Generate Wallet", callback_data='generate_from_wallet_' + crypto),
+         InlineKeyboardButton("Multi-Wallet", callback_data='menu_multi_wallet_' + crypto)],
+        [InlineKeyboardButton("📤 " + crypto, callback_data='withdraw' + crypto),
+         InlineKeyboardButton("📥 Tokens", callback_data='withdraw_token_' + crypto)],
+        [InlineKeyboardButton("🔢 Buy KB", callback_data='buy_kb_' + crypto),
+         InlineKeyboardButton("⚙ Config", callback_data='config_wallet_' + crypto)],
     ]
     return InlineKeyboardMarkup(keyboard)
+
 
 def generate_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
     keyboard = [
@@ -186,12 +497,14 @@ def generate_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboa
     ]
     return InlineKeyboardMarkup(keyboard)
 
+
 def generate_from_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, crypto) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='show_wallet_' + crypto)],
     ]
     return InlineKeyboardMarkup(keyboard)
+
 
 def generate_menu_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, call_origin, crypto) -> InlineKeyboardMarkup:
     callback_generate = 'generate_wallet_' + crypto
@@ -209,10 +522,29 @@ def generate_menu_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, call_origi
 
 
 def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE) -> str:
-    return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
+    if chain_name in context.user_data['chain_states']:
+        return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
+
+
+def get_button_buy_config_name(param_name: str, context: ContextTypes.DEFAULT_TYPE, crypto) -> str:
+    if param_name in context.user_data['wallets'][crypto]['BUY']['bool']:
+        text_to_show = context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['text']
+        return "✅ " + text_to_show if context.user_data['wallets'][crypto]['BUY']['bool'][param_name][
+            'value'] else "❌ " + text_to_show
+    elif param_name in context.user_data['wallets'][crypto]['BUY']['int']:
+        text_to_show = context.user_data['wallets'][crypto]['BUY']['int'][param_name]['text']
+        return "✏️ " + text_to_show
+
+def get_button_menu_param_name(param_name: str, context: ContextTypes.DEFAULT_TYPE, crypto, type: str) -> str:
+    if type == 'bool':
+        return context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ "  if context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['value'] else context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
+    elif type == 'int':
+        return context.user_data['wallets'][crypto]['BUY']['int'][param_name]['name'] + str(context.user_data['wallets'][crypto]['BUY']['int'][param_name]['value'])
+
 
 def get_button_chain_name(chain_name: str) -> str:
     return "🔗 " + chain_name
+
 
 def main_menu_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
@@ -239,7 +571,7 @@ def wallet_menu_keyboard(context) -> InlineKeyboardMarkup:
     ]
     # verifier aussi si le wallet de la crypto a etait connecter ou generer
     for chain in context.user_data['chain_states']:
-        #si la chain est a true alors on affiche le bouton
+        # si la chain est a true alors on affiche le bouton
         if context.user_data['chain_states'][chain]:
             keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_wallet_' + chain)])
     return InlineKeyboardMarkup(keyboard)
@@ -262,7 +594,6 @@ def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMar
         ],
     ]
     return InlineKeyboardMarkup(keyboard)
-
 
 
 def first_menu_keyboard() -> InlineKeyboardMarkup:
@@ -309,7 +640,7 @@ def second_menu_message() -> str:
     return 'Choose the submenu in the second menu:'
 
 
-def text_wallet_menu(crypto) -> str:
+def text_wallet_menu(crypto, context) -> str:
     adresse = "Adresse : "  # + adresse de la wallet
     # mettre en majuscule et en  gras le text
     chain = "Chain : *" + crypto.upper() + "*"
@@ -317,8 +648,13 @@ def text_wallet_menu(crypto) -> str:
 
     general_params = "📍 General"
     buy_params = "📌 Buy"
+    for param in context.user_data['wallets'][crypto]['BUY']['bool']:
+        buy_params += "\n" + get_button_menu_param_name(param, context, crypto, 'bool')
+    buy_params += "\n"
+    for param in context.user_data['wallets'][crypto]['BUY']['int']:
+        buy_params += "\n" + get_button_menu_param_name(param, context, crypto, 'int')
     sell_params = "📌 Sell"
-    text = f"{adresse}\n{chain}\n{balance}\n\n{general_params}\n{buy_params}\n{sell_params}"
+    text = f"{adresse}\n{chain}\n{balance}\n\n{general_params}\n\n{buy_params}\n\n{sell_params}"
     return text
     # Main function to set up the bot
 
@@ -346,6 +682,38 @@ if __name__ == '__main__':
 
     application.add_handler(CallbackQueryHandler(config_wallet, pattern='config_wallet_.*'))
 
+    # Config Buy  Handler
+    application.add_handler(CallbackQueryHandler(config_buy_wallet, pattern='config_buy_wallet_.*'))
+
+    application.add_handler(CallbackQueryHandler(confirm_trade_wallet, pattern='confirm_trade_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(dupe_buy_wallet, pattern='dupe_buy_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(auto_buy_wallet, pattern='auto_buy_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(max_mc_wallet, pattern='max_mc_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_max_mc_wallet, pattern='erase_max_mc_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(min_liq_wallet, pattern='min_liq_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_min_liq_wallet, pattern='erase_min_liq_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(max_liq_wallet, pattern='max_liq_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_max_liq_wallet, pattern='erase_max_liq_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(min_mc_liq_wallet, pattern='min_mc_liq_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_min_mc_liq_wallet, pattern='erase_min_mc_liq_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(gas_delta_wallet, pattern='gas_delta_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_gd_wallet, pattern='erase_gd_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(pia_wallet, pattern='pia_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_pia_wallet, pattern='erase_pia_wallet_.*'))
+    #
+    # application.add_handler(CallbackQueryHandler(slippage_wallet, pattern='slippage_wallet_.*'))
+    # application.add_handler(CallbackQueryHandler(erase_slippage_wallet, pattern='erase_slippage_wallet_.*'))
+
+    # Error handler
     application.add_error_handler(error)
 
     # Start polling
