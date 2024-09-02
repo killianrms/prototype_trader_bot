@@ -11,18 +11,19 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 
 load_dotenv()
 
+user_data = {}
+
 
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # a remplacer par un  appel BDD
-    if 'chain_states' not in context.user_data:
-        context.user_data['chain_states'] = {
+    if update.callback_query.from_user.id not in context.user_data:
+        context.user_data[update.callback_query.from_user.id] = {}
+        context.user_data[update.callback_query.from_user.id]['chain_states'] = {
             'SOL': True,
             'ETH': False,
             'TRX': False,
         }
-    if 'wallets' not in context.user_data:
-        context.user_data['wallets'] = {
+        context.user_data[update.callback_query.from_user.id]['wallets'] = {
             'SOL': {
                 'BUY': {
                     'bool': {
@@ -90,7 +91,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             },
 
             'ETH': {
-                 'BUY': {
+                'BUY': {
                     'bool': {
                         'CONFIRM_TRADE': {
                             'value': False,
@@ -156,7 +157,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             },
 
             'TRX': {
-                 'BUY': {
+                'BUY': {
                     'bool': {
                         'CONFIRM_TRADE': {
                             'value': False,
@@ -221,11 +222,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 },
             },
         }
+        print(update.callback_query)
         await update.message.reply_text(main_menu_message(), reply_markup=main_menu_keyboard())
 
 
 # Main Menu
-async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def main_menu(update: Update) -> None:
     query = update.callback_query
     await query.answer()
     await query.edit_message_text(main_menu_message(), reply_markup=main_menu_keyboard())
@@ -236,12 +238,13 @@ async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     query = update.callback_query
     await query.answer()
     await query.edit_message_text("Select target chain:",
-                                  reply_markup=wallet_menu_keyboard(context))
+                                  reply_markup=wallet_menu_keyboard(context, query.from_user.id))
 
 
 # Chains Menu
 async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
+    user_id = query.from_user.id
     await query.answer()
     print(query.data)
     print(context.user_data)
@@ -249,14 +252,14 @@ async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     # Toggle the specific button's state
     button_name = query.data.split('_')[-1]  # Extract the chain name from the callback data (e.g., 'SOL')
     if button_name != 'menu':
-        context.user_data['chain_states'][button_name] = not context.user_data['chain_states'][button_name]
+        user_data[user_id]['chain_states'][button_name] = not user_data[user_id]['chain_states'][button_name]
 
     # Update the chain menu message with the user-specific states
     await query.edit_message_text(
         """🟢 Enable or 🔴 Disable chains based on your preference.
 
 The ⚙️ Setup section can be used to connect or generate a wallet for each chain with a missing wallet.""",
-        reply_markup=chain_menu_keyboard(context)
+        reply_markup=chain_menu_keyboard(context,user_id)
     )
 
 
@@ -287,23 +290,24 @@ async def generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 async def generate_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
     await query.answer()
     print("Generating wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
                                   reply_markup=generate_from_wallet_keyboard(context, crypto))
 
 
 # Show Wallet
 async def show_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
+    user_id = query.from_user.id
     await query.answer()
     cryptoChoosen = query.data.split('_')[-1]
     print("Showing wallet for " + cryptoChoosen + "...")
     print(query.data)
-    print(context.user_data)
-    text = text_wallet_menu(cryptoChoosen, context)
+    text = text_wallet_menu(cryptoChoosen, context, user_id)
     await query.edit_message_text(text, parse_mode="MarkdownV2",
                                   reply_markup=setting_wallet_keyboard(cryptoChoosen))
 
@@ -314,7 +318,6 @@ async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await query.answer()
     print("Connecting wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
-    print(context.user_data)
     await query.edit_message_text("Connecting wallet for " + query.data.split('_')[-1] + "...",
                                   reply_markup=generate_connect_wallet_keyboard(context))
 
@@ -322,12 +325,13 @@ async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 # Connect Wallet from Wallet Menu
 async def connect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
+    user_id = query.from_user.id
     crypto = query.data.split('_')[-1]
     await query.answer()
     print("Connecting wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
                                   reply_markup=generate_connect_from_wallet_keyboard(crypto))
 
 
@@ -338,7 +342,6 @@ async def disconnect_from_wallet(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
     print("Disconnecting wallet for " + crypto + "...")
     print(query.data)
-    print(context.user_data)
     await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
                                   reply_markup=disconnect_from_wallet_keyboard(crypto))
 
@@ -347,11 +350,12 @@ async def disconnect_from_wallet(update: Update, context: ContextTypes.DEFAULT_T
 async def config_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
     await query.answer()
     print("Config wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_wallet_keyboard(crypto))
 
 
@@ -359,25 +363,90 @@ async def config_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
     await query.answer()
     print("Config buy wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, context,user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context))
 
 
 async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    if crypto in user_data[user_id]['wallets']:
+       user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
+    print("Confirm Trade wallet for " + crypto + "...")
+    print(query.data)
+    await query.edit_message_text(text_wallet_menu(crypto, context,user_id), parse_mode="MarkdownV2",
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+
+
+async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
     await query.answer()
     if crypto in context.user_data['wallets']:
-        context.user_data['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not \
-            context.user_data['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
-    print("Confirm Trade wallet for " + crypto + "...")
+        context.user_data['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value'] = not \
+            context.user_data['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value']
+    print("Dupe Buy wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context))
+
+
+async def auto_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    await query.answer()
+    if crypto in context.user_data['wallets']:
+        context.user_data['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value'] = not \
+            context.user_data['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
+    print("Auto Buy wallet for " + crypto + "...")
+    print(query.data)
+    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+                                  reply_markup=config_buy_wallet_keyboard(crypto, context))
+
+
+# Function to initiate the market cap threshold setting process
+async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Send a message prompting the user to reply with their desired minimum market cap
+    prompt_message = await update.message.reply_text(
+        "Reply to this message with your desired minimum market cap threshold in USD. Minimum is $1! ⚠️"
+    )
+
+    # Store the prompt message ID to track replies and to delete it later
+    context.user_data['prompt_message_id'] = prompt_message.message_id
+
+    # Function to handle the user's reply and update the min_mc value
+
+
+async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user_id = update.message.from_user.id
+    user_reply = update.message.text
+    # Validate the user's input
+    try:
+        min_market_cap = int(user_reply)
+        if min_market_cap < 1:
+            await update.message.reply_text("The minimum market cap must be at least $1. Please try again.")
+            return
+    except ValueError:
+        await update.message.reply_text("Invalid input. Please enter a valid number.")
+        return
+
+    # Update the user's minimum market cap in the user_data dictionary
+    context.user_data['wallets'][user_id]['BUY']['int']['MIN_MC']['value'] = min_market_cap
+
+    # Delete the prompt message
+    prompt_message_id = context.user_data.get('prompt_message_id')
+    if prompt_message_id:
+        await context.bot.delete_message(chat_id=update.message.chat_id, message_id=prompt_message_id)
+
+    # Confirm the update to the user
+    await update.message.reply_text(f"Your minimum market cap has been set to ${min_market_cap}.")
 
 
 # Error handling
@@ -442,8 +511,9 @@ def config_wallet_keyboard(crypto: str) -> InlineKeyboardMarkup:
 
 def change_value_bool(context: ContextTypes.DEFAULT_TYPE, crypto: str, param_name: str) -> None:
     if param_name in context.user_data['wallets'][crypto]['BUY']['bool']:
-        context.user_data['wallets'][crypto]['BUY']['bool'][param_name] = not context.user_data['wallets'][crypto]['bool'][
-            param_name]
+        context.user_data['wallets'][crypto]['BUY']['bool'][param_name] = not \
+            context.user_data['wallets'][crypto]['bool'][
+                param_name]
 
 
 def change_value_int(context: ContextTypes.DEFAULT_TYPE, crypto: str, param_name: str, value: int) -> None:
@@ -521,8 +591,8 @@ def generate_menu_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, call_origi
     return InlineKeyboardMarkup(keyboard)
 
 
-def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE) -> str:
-    if chain_name in context.user_data['chain_states']:
+def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> str:
+    if chain_name in user_data[user_id]['chain_states']:
         return "🟢 " + chain_name if context.user_data['chain_states'][chain_name] else "🔴 " + chain_name
 
 
@@ -535,11 +605,15 @@ def get_button_buy_config_name(param_name: str, context: ContextTypes.DEFAULT_TY
         text_to_show = context.user_data['wallets'][crypto]['BUY']['int'][param_name]['text']
         return "✏️ " + text_to_show
 
+
 def get_button_menu_param_name(param_name: str, context: ContextTypes.DEFAULT_TYPE, crypto, type: str) -> str:
     if type == 'bool':
-        return context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ "  if context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['value'] else context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
+        return context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ " if \
+            context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['value'] else \
+            context.user_data['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
     elif type == 'int':
-        return context.user_data['wallets'][crypto]['BUY']['int'][param_name]['name'] + str(context.user_data['wallets'][crypto]['BUY']['int'][param_name]['value'])
+        return context.user_data['wallets'][crypto]['BUY']['int'][param_name]['name'] + str(
+            context.user_data['wallets'][crypto]['BUY']['int'][param_name]['value'])
 
 
 def get_button_chain_name(chain_name: str) -> str:
@@ -563,28 +637,28 @@ def main_menu_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 
-def wallet_menu_keyboard(context) -> InlineKeyboardMarkup:
+def wallet_menu_keyboard(context, user_id) -> InlineKeyboardMarkup:
     # for chain in chains create button
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
     ]
     # verifier aussi si le wallet de la crypto a etait connecter ou generer
-    for chain in context.user_data['chain_states']:
+    for chain in user_data[user_id]['chain_states']:
         # si la chain est a true alors on affiche le bouton
         if context.user_data['chain_states'][chain]:
             keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_wallet_' + chain)])
     return InlineKeyboardMarkup(keyboard)
 
 
-def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
+def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
         [
-            InlineKeyboardButton(get_button_text('SOL', context), callback_data='toggle_chain_SOL'),
-            InlineKeyboardButton(get_button_text('ETH', context), callback_data='toggle_chain_ETH'),
-            InlineKeyboardButton(get_button_text('TRX', context), callback_data='toggle_chain_TRX')
+            InlineKeyboardButton(get_button_text('SOL', context,user_id), callback_data='toggle_chain_SOL'),
+            InlineKeyboardButton(get_button_text('ETH', context,user_id), callback_data='toggle_chain_ETH'),
+            InlineKeyboardButton(get_button_text('TRX', context,user_id), callback_data='toggle_chain_TRX')
         ],
         [InlineKeyboardButton("▼ Generate or connect a wallet ▼", callback_data='none')],
         [
@@ -640,7 +714,7 @@ def second_menu_message() -> str:
     return 'Choose the submenu in the second menu:'
 
 
-def text_wallet_menu(crypto, context) -> str:
+def text_wallet_menu(crypto, context,user_id) -> str:
     adresse = "Adresse : "  # + adresse de la wallet
     # mettre en majuscule et en  gras le text
     chain = "Chain : *" + crypto.upper() + "*"
@@ -648,10 +722,10 @@ def text_wallet_menu(crypto, context) -> str:
 
     general_params = "📍 General"
     buy_params = "📌 Buy"
-    for param in context.user_data['wallets'][crypto]['BUY']['bool']:
+    for param in user_data[user_id]['wallets'][crypto]['BUY']['bool']:
         buy_params += "\n" + get_button_menu_param_name(param, context, crypto, 'bool')
     buy_params += "\n"
-    for param in context.user_data['wallets'][crypto]['BUY']['int']:
+    for param in user_data[user_id]['wallets'][crypto]['BUY']['int']:
         buy_params += "\n" + get_button_menu_param_name(param, context, crypto, 'int')
     sell_params = "📌 Sell"
     text = f"{adresse}\n{chain}\n{balance}\n\n{general_params}\n\n{buy_params}\n\n{sell_params}"
@@ -686,8 +760,8 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(config_buy_wallet, pattern='config_buy_wallet_.*'))
 
     application.add_handler(CallbackQueryHandler(confirm_trade_wallet, pattern='confirm_trade_wallet_.*'))
-    # application.add_handler(CallbackQueryHandler(dupe_buy_wallet, pattern='dupe_buy_wallet_.*'))
-    # application.add_handler(CallbackQueryHandler(auto_buy_wallet, pattern='auto_buy_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(dupe_buy_wallet, pattern='dupe_buy_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(auto_buy_wallet, pattern='auto_buy_wallet_.*'))
     #
     # application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
     # application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
