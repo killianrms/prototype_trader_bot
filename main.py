@@ -12,14 +12,18 @@ user_data = {}
 
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if update.callback_query.from_user.id not in context.user_data:
-        context.user_data[update.callback_query.from_user.id] = {}
-        context.user_data[update.callback_query.from_user.id]['chain_states'] = {
+    if update.message.from_user.id not in user_data:
+        user_id = update.message.from_user.id
+        user_data[user_id] = {
+            'first_name' : update.message.from_user.first_name,
+            'id' : user_id
+        }
+        user_data[user_id]['chain_states'] = {
             'SOL': True,
             'ETH': False,
             'TRX': False,
         }
-        context.user_data[update.callback_query.from_user.id]['wallets'] = {
+        user_data[user_id]['wallets'] = {
             'SOL': {
                 'BUY': {
                     'bool': {
@@ -218,6 +222,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 },
             },
         }
+        print(user_data[user_id])
         print(update.callback_query)
         await update.message.reply_text(main_menu_message(), reply_markup=main_menu_keyboard())
 
