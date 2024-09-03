@@ -426,6 +426,7 @@ async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         "Reply to this message with your desired minimum market cap threshold in USD. Minimum is $1! ⚠️"
     )
 
+
     # Store the prompt message ID to track replies and to delete it later
     user_data[user_id]['prompt_message_id'] = prompt_message.message_id
     user_data[user_id]['setting_min_mc'] = True
