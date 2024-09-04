@@ -1,6 +1,7 @@
 import os
 import json
 import re
+from idlelib.editor import keynames
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
@@ -30,6 +31,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             'SOL': {
                 'BUY': {
                     'bool': {
+                        'COPY_TRADE': {
+                            'value': False,
+                            'text': "Off",
+                            'name': "Copy Trade Buy : "
+                        },
                         'CONFIRM_TRADE': {
                             'value': False,
                             'text': "Confirm Trade",
@@ -90,12 +96,76 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     },
                 },
                 'SELL': {
+                    'bool' : {
+                        'CONFIRM_TRADE': {
+                            'value': False,
+                            'text': "Confirm Trade",
+                            'name': "Confirm Trade Sell : "
+                        },
+                        'AUTO_SELL': {
+                            'value': False,
+                            'text': "Auto Sell",
+                            'name': "Auto Sell : "
+                        },
+                        'TRAILING_SELL': {
+                            'value': False,
+                            'text': "Trailing Sell",
+                            'name': "Trailing Sell : "
+                        },
+                        'AUTO_SELL_RETRY': {
+                            'value': False,
+                            'text': "Auto Sell Retry",
+                            'name': "Auto Sell Retry : "
+                        },
+                    },
+                    'int' : {
+                        'SELL_HIGH': {
+                            'value': 0,
+                            'text': "Sell High",
+                            'name': "Sell High : "
+                        },
+                        'SELL_LOW': {
+                            'value': 0,
+                            'text': "Sell Low",
+                            'name': "Sell Low : "
+                        },
+                        'SELL_HIGH_AMOUNT': {
+                            'value': 0,
+                            'text': "Sell High Amount",
+                            'name': "Sell High Amount : "
+                        },
+                        'SELL_LOW_AMOUNT': {
+                            'value': 0,
+                            'text': "Sell Low Amount",
+                            'name': "Sell Low Amount : "
+                        },
+                        'GAS_DELTA': {
+                            'value': 0,
+                            'text': "Gas Delta",
+                            'name': "Sell Gas Price : "
+                        },
+                        'PIA': {
+                            'value': 0,
+                            'text': "Price Impact Alert",
+                            'name': "Price impact alert : "
+                        },
+                        'SLIPPAGE': {
+                            'value': 0,
+                            'text': "Slippage",
+                            'name': "Slippage : "
+                        },
+                    }
                 },
             },
 
             'ETH': {
                 'BUY': {
                     'bool': {
+                        'COPY_TRADE': {
+                            'value': False,
+                            'text': "Off",
+                            'name': "Copy Trade Buy : "
+                        },
                         'CONFIRM_TRADE': {
                             'value': False,
                             'text': "Confirm Trade",
@@ -156,12 +226,76 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     },
                 },
                 'SELL': {
+                    'bool': {
+                        'CONFIRM_TRADE': {
+                            'value': False,
+                            'text': "Confirm Trade",
+                            'name': "Confirm Trade Sell : "
+                        },
+                        'AUTO_SELL': {
+                            'value': False,
+                            'text': "Auto Sell",
+                            'name': "Auto Sell : "
+                        },
+                        'TRAILING_SELL': {
+                            'value': False,
+                            'text': "Trailing Sell",
+                            'name': "Trailing Sell : "
+                        },
+                        'AUTO_SELL_RETRY': {
+                            'value': False,
+                            'text': "Auto Sell Retry",
+                            'name': "Auto Sell Retry : "
+                        },
+                    },
+                    'int': {
+                        'SELL_HIGH': {
+                            'value': 0,
+                            'text': "Sell High",
+                            'name': "Sell High : "
+                        },
+                        'SELL_LOW': {
+                            'value': 0,
+                            'text': "Sell Low",
+                            'name': "Sell Low : "
+                        },
+                        'SELL_HIGH_AMOUNT': {
+                            'value': 0,
+                            'text': "Sell High Amount",
+                            'name': "Sell High Amount : "
+                        },
+                        'SELL_LOW_AMOUNT': {
+                            'value': 0,
+                            'text': "Sell Low Amount",
+                            'name': "Sell Low Amount : "
+                        },
+                        'GAS_DELTA': {
+                            'value': 0,
+                            'text': "Gas Delta",
+                            'name': "Sell Gas Price : "
+                        },
+                        'PIA': {
+                            'value': 0,
+                            'text': "Price Impact Alert",
+                            'name': "Price impact alert : "
+                        },
+                        'SLIPPAGE': {
+                            'value': 0,
+                            'text': "Slippage",
+                            'name': "Slippage : "
+                        },
+                    }
                 },
             },
 
             'TRX': {
                 'BUY': {
                     'bool': {
+                        'COPY_TRADE': {
+                            'value': False,
+                            'text': "Off",
+                            'name': "Copy Trade Buy : "
+                        },
                         'CONFIRM_TRADE': {
                             'value': False,
                             'text': "Confirm Trade",
@@ -222,6 +356,65 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     },
                 },
                 'SELL': {
+                    'bool': {
+                        'CONFIRM_TRADE': {
+                            'value': False,
+                            'text': "Confirm Trade",
+                            'name': "Confirm Trade Sell : "
+                        },
+                        'AUTO_SELL': {
+                            'value': False,
+                            'text': "Auto Sell",
+                            'name': "Auto Sell : "
+                        },
+                        'TRAILING_SELL': {
+                            'value': False,
+                            'text': "Trailing Sell",
+                            'name': "Trailing Sell : "
+                        },
+                        'AUTO_SELL_RETRY': {
+                            'value': False,
+                            'text': "Auto Sell Retry",
+                            'name': "Auto Sell Retry : "
+                        },
+                    },
+                    'int': {
+                        'SELL_HIGH': {
+                            'value': 0,
+                            'text': "Sell High",
+                            'name': "Sell High : "
+                        },
+                        'SELL_LOW': {
+                            'value': 0,
+                            'text': "Sell Low",
+                            'name': "Sell Low : "
+                        },
+                        'SELL_HIGH_AMOUNT': {
+                            'value': 0,
+                            'text': "Sell High Amount",
+                            'name': "Sell High Amount : "
+                        },
+                        'SELL_LOW_AMOUNT': {
+                            'value': 0,
+                            'text': "Sell Low Amount",
+                            'name': "Sell Low Amount : "
+                        },
+                        'GAS_DELTA': {
+                            'value': 0,
+                            'text': "Gas Delta",
+                            'name': "Sell Gas Price : "
+                        },
+                        'PIA': {
+                            'value': 0,
+                            'text': "Price Impact Alert",
+                            'name': "Price impact alert : "
+                        },
+                        'SLIPPAGE': {
+                            'value': 0,
+                            'text': "Slippage",
+                            'name': "Slippage : "
+                        },
+                    }
                 },
             },
         }
@@ -244,7 +437,6 @@ async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await query.answer()
     await query.edit_message_text("Select target chain:",
                                   reply_markup=wallet_menu_keyboard(context, query.from_user.id))
-
 
 # Chains Menu
 async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -466,6 +658,34 @@ async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         user_data[user_id]['crypto'] = None
 
 
+async def ct(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    user_id = query.from_user.id
+    await query.answer()
+    print("Open copy trade menu for " + query.data.split('_')[-1] + "...")
+    print(query.data)
+    await query.edit_message_text("Copy Trade Menu", reply_markup=copytrade_menu_keyboard(context, user_id))
+
+async def show_copytrade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    user_id = query.from_user.id
+    crypto = query.data.split('_')[-1]
+    await query.answer()
+    print("Showing copy trade for " + query.data.split('_')[-1] + "...")
+    print(query.data)
+    await query.edit_message_text("Copy Trade Menu", reply_markup=copytrade_crypto_keyboard(context, user_id, crypto))
+
+async def set_copytrade_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    user_id = query.from_user.id
+    crypto = query.data.split('_')[-1]
+    await query.answer()
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['COPY_TRADE']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['COPY_TRADE']['value']
+    print("Copy Trade for " + crypto + "...")
+    print(query.data)
+    await query.edit_message_text("Copy Trade Menu", reply_markup=copytrade_crypto_keyboard(context, user_id, crypto))
+
 # Error handling
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f'Update {update} caused error {context.error}')
@@ -477,6 +697,16 @@ def button_bot_name() -> list[InlineKeyboardButton]:
 
 
 # Keyboards
+
+def copytrade_crypto_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id, crypto) -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='ct')],
+        [InlineKeyboardButton(get_button_text_ct(crypto,user_id), callback_data='set_copy_trade_' + crypto)],
+        [InlineKeyboardButton("Add Wallet or Contract", callback_data='add_wallet_' + crypto)],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
 def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
@@ -616,6 +846,10 @@ def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE, user_id
         print(user_data[user_id]['chain_states'][chain_name])
         return "🟢 " + chain_name if user_data[user_id]['chain_states'][chain_name] else "🔴 " + chain_name
 
+def get_button_text_ct(chain_name: str, user_id) -> str:
+    if chain_name in user_data[user_id]['wallets']:
+        return "🟢 ON"  if user_data[user_id]['wallets'][chain_name]['BUY']['bool']['COPY_TRADE']['value'] else "🔴 OFF"
+
 
 def get_button_buy_config_name(param_name: str, crypto, user_id) -> str:
     if param_name in user_data[user_id]['wallets'][crypto]['BUY']['bool']:
@@ -670,6 +904,16 @@ def wallet_menu_keyboard(context, user_id) -> InlineKeyboardMarkup:
         # si la chain est a true alors on affiche le bouton
         if user_data[user_id]['chain_states'][chain]:
             keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_wallet_' + chain)])
+    return InlineKeyboardMarkup(keyboard)
+
+def  copytrade_menu_keyboard(context: ContextTypes.DEFAULT_TYPE,user_id) -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
+    ]
+    for chain in user_data[user_id]['chain_states']:
+        if user_data[user_id]['chain_states'][chain]:
+            keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_copytrade_' + chain)])
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -818,6 +1062,10 @@ if __name__ == '__main__':
     #
     # application.add_handler(CallbackQueryHandler(slippage_wallet, pattern='slippage_wallet_.*'))
     # application.add_handler(CallbackQueryHandler(erase_slippage_wallet, pattern='erase_slippage_wallet_.*'))
+
+    application.add_handler(CallbackQueryHandler(ct, pattern='ct'))
+    application.add_handler(CallbackQueryHandler(show_copytrade, pattern='show_copytrade_.*'))
+    application.add_handler(CallbackQueryHandler(set_copytrade_value, pattern='set_copy_trade_.*'))
 
     # Error handler
     application.add_error_handler(error)
