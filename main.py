@@ -1,25 +1,46 @@
 import os
 import json
 import re
-from idlelib.editor import keynames
 
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import (Application,
+                          CommandHandler,
+                          CallbackQueryHandler,
+                          ConversationHandler,
+                          MessageHandler,
+                          ContextTypes,
+                          filters
+                          )
 
 load_dotenv()
 
+MAX_WALLETS_FREE = 3
+AWAITING_WALLET, AWAITING_NAME = range(2)
+
+# Wallet regex patterns for different types
+wallet_regex = {
+    'SOL': r'[1-9A-HJ-NP-Za-km-z]{32,44}',  # Solana
+    'ETH': r'^0x[a-fA-F0-9]{40}$',  # Ethereum
+    'TRX': r'^T[a-zA-Z0-9]{33}$'  # TRX
+}
+
 user_data = {}
 
+message_ids = {}
+copytrade_message_id = None
+copytrade_context = None
+copytrade_update = None
 
 # Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if  update.effective_user.id not in user_data:
+    if update.effective_user.id not in user_data:
         user_id = update.effective_user.id
         first_name = update.effective_user.first_name
         user_data[user_id] = {
-            'first_name' : first_name,
-            'id' : user_id
+            'first_name': first_name,
+            'id': user_id,
+            'subscribed': False,
         }
         print(user_data)
         user_data[user_id]['chain_states'] = {
@@ -29,6 +50,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         }
         user_data[user_id]['wallets'] = {
             'SOL': {
+                'GENERAL': {
+                    'WALLETS_CT': {
+                        'value': [],
+                        'text': "Wallets CT",
+                        'name': "Wallets d'adresse du  Copy Trade : "
+                    },
+                },
                 'BUY': {
                     'bool': {
                         'COPY_TRADE': {
@@ -96,7 +124,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                     },
                 },
                 'SELL': {
-                    'bool' : {
+                    'bool': {
                         'CONFIRM_TRADE': {
                             'value': False,
                             'text': "Confirm Trade",
@@ -118,7 +146,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Auto Sell Retry : "
                         },
                     },
-                    'int' : {
+                    'int': {
                         'SELL_HIGH': {
                             'value': 0,
                             'text': "Sell High",
@@ -159,6 +187,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             },
 
             'ETH': {
+                'GENERAL': {
+                    'WALLETS_CT': {
+                        'value': [],
+                        'text': "Wallets CT",
+                        'name': "Wallets d'adresse du  Copy Trade : "
+                    },
+                },
                 'BUY': {
                     'bool': {
                         'COPY_TRADE': {
@@ -289,6 +324,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             },
 
             'TRX': {
+                'GENERAL': {
+                    'WALLETS_CT': {
+                        'value': [],
+                        'text': "Wallets CT",
+                        'name': "Wallets d'adresse du  Copy Trade : "
+                    },
+                },
                 'BUY': {
                     'bool': {
                         'COPY_TRADE': {
@@ -418,6 +460,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 },
             },
         }
+        message_ids[update.effective_user.id] = {
+            'bot': [],
+            'user': []
+        }
+
+        print(message_ids)
 
         user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
         print(user_data_json)
@@ -438,6 +486,7 @@ async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await query.edit_message_text("Select target chain:",
                                   reply_markup=wallet_menu_keyboard(context, query.from_user.id))
 
+
 # Chains Menu
 async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -456,7 +505,7 @@ async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         """🟢 Enable or 🔴 Disable chains based on your preference.
 
 The ⚙️ Setup section can be used to connect or generate a wallet for each chain with a missing wallet.""",
-        reply_markup=chain_menu_keyboard(context,user_id)
+        reply_markup=chain_menu_keyboard(context, user_id)
     )
 
 
@@ -565,7 +614,7 @@ async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     print("Config buy wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, context,user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
@@ -575,20 +624,22 @@ async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = query.from_user.id
     await query.answer()
     if crypto in user_data[user_id]['wallets']:
-       user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not \
+            user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
     print("Confirm Trade wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, context,user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
 async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
-    user_id  = query.from_user.id
+    user_id = query.from_user.id
     await query.answer()
     if crypto in user_data[user_id]['wallets']:
-        user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value']
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value'] = not \
+            user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value']
     print("Dupe Buy wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
@@ -629,7 +680,7 @@ async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.message.from_user.id
 
-    if user_data[user_id]['setting_min_mc'] :
+    if user_data[user_id]['setting_min_mc']:
         user_reply = update.message.text
         crypto = user_data[user_id]['crypto_choosen']
         # Validate the user's input
@@ -666,14 +717,23 @@ async def ct(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(query.data)
     await query.edit_message_text("Copy Trade Menu", reply_markup=copytrade_menu_keyboard(context, user_id))
 
+
 async def show_copytrade(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    global copytrade_message_id
+    global copytrade_context
+    global copytrade_update
     query = update.callback_query
     user_id = query.from_user.id
     crypto = query.data.split('_')[-1]
     await query.answer()
     print("Showing copy trade for " + query.data.split('_')[-1] + "...")
     print(query.data)
-    await query.edit_message_text("Copy Trade Menu", reply_markup=copytrade_crypto_keyboard(context, user_id, crypto))
+    message = await query.edit_message_text("Copy Trade Menu",
+                                            reply_markup=copytrade_crypto_keyboard(context, user_id, crypto))
+    copytrade_context = context
+    copytrade_update = update
+    copytrade_message_id = message.message_id
+
 
 async def set_copytrade_value(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -681,10 +741,138 @@ async def set_copytrade_value(update: Update, context: ContextTypes.DEFAULT_TYPE
     crypto = query.data.split('_')[-1]
     await query.answer()
     if crypto in user_data[user_id]['wallets']:
-        user_data[user_id]['wallets'][crypto]['BUY']['bool']['COPY_TRADE']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['COPY_TRADE']['value']
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['COPY_TRADE']['value'] = not \
+            user_data[user_id]['wallets'][crypto]['BUY']['bool']['COPY_TRADE']['value']
     print("Copy Trade for " + crypto + "...")
     print(query.data)
     await query.edit_message_text("Copy Trade Menu", reply_markup=copytrade_crypto_keyboard(context, user_id, crypto))
+
+
+async def add_wallet_ct(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # User clicked a button for adding a specific wallet type
+    print("add_wallet_ct")
+    query = update.callback_query
+    context.user_data['wallet_type'] = query.data.split('_')[-1]
+    crypto = context.user_data['wallet_type']
+    await query.answer()
+    # Ask for wallet address in a new message
+    message = await query.message.reply_text("Please provide the wallet address:")
+
+    # Store the message ID to delete later
+    user_id = update.effective_user.id
+    if user_id not in message_ids:
+        message_ids[user_id] = {'bot': [], 'user': []}
+    message_ids[user_id]['bot'].append(message.message_id)
+
+    return AWAITING_WALLET
+
+
+async def receive_wallet_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Get the selected wallet type
+    wallet_type = context.user_data.get('wallet_type')
+    wallet_address = update.message.text
+    user_id = update.effective_user.id
+
+    # Validate the wallet address using the regex for the selected wallet type
+    if re.match(wallet_regex[wallet_type], wallet_address):
+        # Save the wallet address in the user data
+        context.user_data['wallet_address'] = wallet_address
+        message = await update.message.reply_text("Wallet address is valid! Please provide a name for this wallet:")
+
+        # Store the message ID to delete later
+        if user_id not in message_ids:
+            message_ids[user_id] = {'bot': [], 'user': []}
+        message_ids[user_id]['user'].append(update.message.message_id)
+        message_ids[user_id]['bot'].append(message.message_id)
+
+        return AWAITING_NAME
+    else:
+        message = await update.message.reply_text("Invalid wallet address. Please provide a correct wallet address:")
+
+        # Store the message ID to delete later
+        if user_id not in message_ids:
+            message_ids[user_id] = {'bot': [], 'user': []}
+        message_ids[user_id]['user'].append(update.message.message_id)
+        message_ids[user_id]['bot'].append(message.message_id)
+
+        return AWAITING_WALLET
+
+
+async def receive_wallet_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Receive the wallet name
+    wallet_name = update.message.text
+    wallet_address = context.user_data.get('wallet_address')
+    wallet_type = context.user_data.get('wallet_type')
+    user_id = update.effective_user.id
+
+    wallets_ct = user_data[user_id]['wallets'][wallet_type]['GENERAL']['WALLETS_CT']['value']
+
+    # Check if wallet address already exists
+    if wallet_address in wallets_ct:
+        message = await update.message.reply_text("This wallet address already exists.")
+
+        # Store the message ID to delete later
+        if user_id not in message_ids:
+            message_ids[user_id] = {'bot': [], 'user': []}
+        message_ids[user_id]['user'].append(update.message.message_id)
+        message_ids[user_id]['bot'].append(message.message_id)
+    else:
+        # Check if the user is subscribed and limit the number of wallets
+        is_subscribed = user_data[user_id]['subscribed']
+        if not is_subscribed and len(wallets_ct) >= MAX_WALLETS_FREE:
+            message = await update.message.reply_text(
+                f"You cannot add more than {MAX_WALLETS_FREE} wallets in the free version.")
+
+            # Store the message ID to delete later
+            if user_id not in message_ids:
+                message_ids[user_id] = {'bot': [], 'user': []}
+            message_ids[user_id]['user'].append(update.message.message_id)
+            message_ids[user_id]['bot'].append(message.message_id)
+        else:
+            # Add wallet to the list
+            #generate a i value for wallet
+            i = len(user_data[user_id]['wallets'][wallet_type]['GENERAL']['WALLETS_CT']['value'])
+            to_input = {
+                f'{i}' : {
+                    'address': wallet_address,
+                    'name': wallet_name
+                }
+            }
+            wallets_ct.append(to_input)
+            user_data[user_id]['wallets'][wallet_type]['GENERAL']['WALLETS_CT']['value'] = wallets_ct
+            message = await update.message.reply_text(
+                f"Wallet '{wallet_name}' with address '{wallet_address}' added successfully to Copy Trade!")
+
+            # Store the message ID to delete later
+            if user_id not in message_ids:
+                message_ids[user_id] = {'bot': [], 'user': []}
+            message_ids[user_id]['user'].append(update.message.message_id)
+            message_ids[user_id]['bot'].append(message.message_id)
+
+    if user_id in message_ids:
+        for msg_id in message_ids[user_id]['bot']:
+            try:
+                await update.message.chat.delete_message(msg_id)
+            except Exception as e:
+                print(f"Failed to delete bot message {msg_id}: {e}")
+        for msg_id in message_ids[user_id]['user']:
+            try:
+                await update.message.chat.delete_message(msg_id)
+            except Exception as e:
+                print(f"Failed to delete user message {msg_id}: {e}")
+
+    user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+    print(user_data_json)
+
+    return ConversationHandler.END
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    # Cancel the current conversation
+    await update.message.reply_text("Operation cancelled.")
+
+    return ConversationHandler.END
+
 
 # Error handling
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -701,11 +889,20 @@ def button_bot_name() -> list[InlineKeyboardButton]:
 def copytrade_crypto_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id, crypto) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='ct')],
-        [InlineKeyboardButton(get_button_text_ct(crypto,user_id), callback_data='set_copy_trade_' + crypto)],
-        [InlineKeyboardButton("Add Wallet or Contract", callback_data='add_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_text_ct(crypto, user_id), callback_data='set_copy_trade_' + crypto),InlineKeyboardButton("🔙 Return", callback_data='ct')],
+        [InlineKeyboardButton("Add Wallet or Contract", callback_data='add_ct_wallet_' + crypto)],
     ]
+
+    if user_data[user_id]['wallets'][crypto]['GENERAL']['WALLETS_CT']['value']:
+        for i in user_data[user_id]['wallets'][crypto]['GENERAL']['WALLETS_CT']['value']:
+            for wallet in i :
+                print(i)
+                print(wallet)
+                keyboard.append([InlineKeyboardButton(i[wallet]['name'], callback_data='param_ct_wallet_' + crypto + '_' + wallet),
+                         InlineKeyboardButton("Rename", callback_data='rename_ct_wallet_' + crypto + '_' + wallet),
+                         InlineKeyboardButton("❌", callback_data='remove_ct_wallet_' + crypto + '_' + wallet)])
     return InlineKeyboardMarkup(keyboard)
+
 
 def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
     keyboard = [
@@ -723,7 +920,7 @@ def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE, 
         [InlineKeyboardButton(get_button_buy_config_name("MAX_MC", crypto, user_id),
                               callback_data='max_mc_wallet_' + crypto),
          InlineKeyboardButton("⌫ Max MC", callback_data='erase_max_mc_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ",crypto, user_id),
+        [InlineKeyboardButton(get_button_buy_config_name("MIN_LIQ", crypto, user_id),
                               callback_data='min_liq_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min Liq", callback_data='erase_min_liq_wallet_' + crypto)],
         [InlineKeyboardButton(get_button_buy_config_name("MAX_LIQ", crypto, user_id),
@@ -846,9 +1043,10 @@ def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE, user_id
         print(user_data[user_id]['chain_states'][chain_name])
         return "🟢 " + chain_name if user_data[user_id]['chain_states'][chain_name] else "🔴 " + chain_name
 
+
 def get_button_text_ct(chain_name: str, user_id) -> str:
     if chain_name in user_data[user_id]['wallets']:
-        return "🟢 ON"  if user_data[user_id]['wallets'][chain_name]['BUY']['bool']['COPY_TRADE']['value'] else "🔴 OFF"
+        return "🟢 ON" if user_data[user_id]['wallets'][chain_name]['BUY']['bool']['COPY_TRADE']['value'] else "🔴 OFF"
 
 
 def get_button_buy_config_name(param_name: str, crypto, user_id) -> str:
@@ -906,14 +1104,17 @@ def wallet_menu_keyboard(context, user_id) -> InlineKeyboardMarkup:
             keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_wallet_' + chain)])
     return InlineKeyboardMarkup(keyboard)
 
-def  copytrade_menu_keyboard(context: ContextTypes.DEFAULT_TYPE,user_id) -> InlineKeyboardMarkup:
+
+def copytrade_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
     ]
     for chain in user_data[user_id]['chain_states']:
+        print(chain)
         if user_data[user_id]['chain_states'][chain]:
-            keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_copytrade_' + chain)])
+            keyboard.append(
+                [InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_copytrade_' + chain)])
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -922,9 +1123,9 @@ def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKe
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
         [
-            InlineKeyboardButton(get_button_text('SOL', context,user_id), callback_data='toggle_chain_SOL'),
-            InlineKeyboardButton(get_button_text('ETH', context,user_id), callback_data='toggle_chain_ETH'),
-            InlineKeyboardButton(get_button_text('TRX', context,user_id), callback_data='toggle_chain_TRX')
+            InlineKeyboardButton(get_button_text('SOL', context, user_id), callback_data='toggle_chain_SOL'),
+            InlineKeyboardButton(get_button_text('ETH', context, user_id), callback_data='toggle_chain_ETH'),
+            InlineKeyboardButton(get_button_text('TRX', context, user_id), callback_data='toggle_chain_TRX')
         ],
         [InlineKeyboardButton("▼ Generate or connect a wallet ▼", callback_data='none')],
         [
@@ -980,7 +1181,7 @@ def second_menu_message() -> str:
     return 'Choose the submenu in the second menu:'
 
 
-def text_wallet_menu(crypto, context,user_id) -> str:
+def text_wallet_menu(crypto, context, user_id) -> str:
     adresse = "Adresse : "  # + adresse de la wallet
     # mettre en majuscule et en  gras le text
     chain = "Chain : *" + crypto.upper() + "*"
@@ -1005,6 +1206,7 @@ def extract_user_data(update: Update) -> dict:
         'id': user.id,
         'first_name': user.first_name,
     }
+
 
 if __name__ == '__main__':
     # Replace 'YOUR_TOKEN_HERE' with your bot's token
@@ -1066,6 +1268,17 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(ct, pattern='ct'))
     application.add_handler(CallbackQueryHandler(show_copytrade, pattern='show_copytrade_.*'))
     application.add_handler(CallbackQueryHandler(set_copytrade_value, pattern='set_copy_trade_.*'))
+
+    conv_handler = ConversationHandler(
+        entry_points=[CallbackQueryHandler(add_wallet_ct, pattern='add_ct_wallet_.*')],
+        states={
+            AWAITING_WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_wallet_address)],
+            AWAITING_NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_wallet_name)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    application.add_handler(conv_handler)
 
     # Error handler
     application.add_error_handler(error)
