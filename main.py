@@ -466,17 +466,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         }
 
         print(message_ids)
-
+        user_id = update.effective_user.id
         user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
         print(user_data_json)
-        await update.message.reply_text(main_menu_message(), reply_markup=main_menu_keyboard())
+        await update.message.reply_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
 
 
 # Main Menu
 async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
+    user_id = update.effective_user.id
     await query.answer()
-    await query.edit_message_text(main_menu_message(), reply_markup=main_menu_keyboard())
+    await query.edit_message_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
 
 
 # Wallets Menu
@@ -874,6 +875,16 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
+async def premium(update: Update, context:ContextTypes.DEFAULT_TYPE)-> None :
+    query = update.callback_query
+    user_id = update.effective_user.id
+    if user_id in user_data :
+        user_data[user_id]['subscribed'] = not user_data[user_id]['subscribed']
+
+    await query.edit_message_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
+
+
+
 # Error handling
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f'Update {update} caused error {context.error}')
@@ -1169,8 +1180,20 @@ def return_to_second_keyboard() -> InlineKeyboardMarkup:
     # Messages
 
 
-def main_menu_message() -> str:
-    return 'Choose the option in the main menu:'
+def main_menu_message(user_id) -> str:
+    text_choose = """What would you like to do today?
+
+Monitor
+Active Trades: 0
+Disabled Trades: 0
+
+Auto Snipe
+Active Auto Snipes: 0
+
+Presale
+Active Presales: 0"""
+    return "Your premium statut : 🟢\n" + text_choose  if user_data[user_id]['subscribed'] else "Your premium statut : 🔴\n" + text_choose
+
 
 
 def first_menu_message() -> str:
@@ -1240,6 +1263,9 @@ if __name__ == '__main__':
 
     application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
     application.add_handler(MessageHandler(filters.REPLY & filters.TEXT, set_market_cap))
+
+    application.add_handler(CallbackQueryHandler(premium, pattern='premium'))
+
     #
     # application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
     # application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
