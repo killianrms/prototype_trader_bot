@@ -1,7 +1,6 @@
 import os
 import json
 import re
-
 from dotenv import load_dotenv
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (Application,
@@ -13,6 +12,9 @@ from telegram.ext import (Application,
                           filters
                           )
 
+from chain_menu import *
+from wallets import *
+from main_menu import *
 load_dotenv()
 
 MAX_WALLETS_FREE = 3
@@ -470,45 +472,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         user_id = update.effective_user.id
         user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
         print(user_data_json)
-        await update.message.reply_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
-
-
-# Main Menu
-async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    user_id = update.effective_user.id
-    await query.answer()
-    await query.edit_message_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
-
-
-# Wallets Menu
-async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text("Select target chain:",
-                                  reply_markup=wallet_menu_keyboard(context, query.from_user.id))
-
-
-# Chains Menu
-async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    user_id = query.from_user.id
-    await query.answer()
-    print(query.data)
-    print(user_data)
-
-    # Toggle the specific button's state
-    button_name = query.data.split('_')[-1]  # Extract the chain name from the callback data (e.g., 'SOL')
-    if button_name != 'menu':
-        user_data[user_id]['chain_states'][button_name] = not user_data[user_id]['chain_states'][button_name]
-
-    # Update the chain menu message with the user-specific states
-    await query.edit_message_text(
-        """🟢 Enable or 🔴 Disable chains based on your preference.
-
-The ⚙️ Setup section can be used to connect or generate a wallet for each chain with a missing wallet.""",
-        reply_markup=chain_menu_keyboard(context, user_id)
-    )
+        await update.message.reply_text(main_menu_message(user_id, user_data), reply_markup=main_menu_keyboard())
 
 
 # Generate Wallet from Menu Wallet
@@ -1115,15 +1079,6 @@ def generate_menu_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, call_origi
     return InlineKeyboardMarkup(keyboard)
 
 
-def get_button_text(chain_name: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> str:
-    print(chain_name)
-    print(user_id)
-    print(user_data[user_id]['chain_states'])
-    if chain_name in user_data[user_id]['chain_states']:
-        print(user_data[user_id]['chain_states'][chain_name])
-        return "🟢 " + chain_name if user_data[user_id]['chain_states'][chain_name] else "🔴 " + chain_name
-
-
 def get_button_text_ct(chain_name: str, user_id) -> str:
     if chain_name in user_data[user_id]['wallets']:
         return "🟢 ON" if user_data[user_id]['wallets'][chain_name]['BUY']['bool']['COPY_TRADE']['value'] else "🔴 OFF"
@@ -1150,41 +1105,6 @@ def get_button_menu_param_name(param_name: str, crypto, type: str, user_id) -> s
             user_data[user_id]['wallets'][crypto]['BUY']['int'][param_name]['value'])
 
 
-def get_button_chain_name(chain_name: str) -> str:
-    return "🔗 " + chain_name
-
-
-def main_menu_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton("⚙ Chains", callback_data="toggle_chain_menu")],
-        [InlineKeyboardButton("⚙ Wallets", callback_data="wallet"),
-         InlineKeyboardButton("⚙ Call Channels", callback_data="cc")],
-        [InlineKeyboardButton("⚙ Presales", callback_data="presales"),
-         InlineKeyboardButton("⚙ Copy Trading", callback_data="ct")],
-        [InlineKeyboardButton("⚙ Auto Snipe", callback_data="as"),
-         InlineKeyboardButton("⚙ Signals", callback_data="signal")],
-        [InlineKeyboardButton("↔️Bridge", callback_data="bridge"),
-         InlineKeyboardButton("🌟Premium", callback_data="premium"),
-         InlineKeyboardButton("ℹ️ FAQ", callback_data="faq")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
-def wallet_menu_keyboard(context, user_id) -> InlineKeyboardMarkup:
-    # for chain in chains create button
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
-    ]
-    # verifier aussi si le wallet de la crypto a etait connecter ou generer
-    for chain in user_data[user_id]['chain_states']:
-        # si la chain est a true alors on affiche le bouton
-        if user_data[user_id]['chain_states'][chain]:
-            keyboard.append([InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_wallet_' + chain)])
-    return InlineKeyboardMarkup(keyboard)
-
-
 def copytrade_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
@@ -1195,25 +1115,6 @@ def copytrade_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> Inli
         if user_data[user_id]['chain_states'][chain]:
             keyboard.append(
                 [InlineKeyboardButton(get_button_chain_name(chain), callback_data='show_copytrade_' + chain)])
-    return InlineKeyboardMarkup(keyboard)
-
-
-def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
-        [
-            InlineKeyboardButton(get_button_text('SOL', context, user_id), callback_data='toggle_chain_SOL'),
-            InlineKeyboardButton(get_button_text('ETH', context, user_id), callback_data='toggle_chain_ETH'),
-            InlineKeyboardButton(get_button_text('TRX', context, user_id), callback_data='toggle_chain_TRX')
-        ],
-        [InlineKeyboardButton("▼ Generate or connect a wallet ▼", callback_data='none')],
-        [
-            InlineKeyboardButton("⚙ SOL", callback_data='menu_generate_wallet_SOL'),
-            InlineKeyboardButton("⚙ ETH", callback_data='menu_generate_wallet_ETH'),
-            InlineKeyboardButton("⚙ TRX", callback_data='menu_generate_wallet_TRX')
-        ],
-    ]
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -1248,21 +1149,6 @@ def return_to_second_keyboard() -> InlineKeyboardMarkup:
 
     # Messages
 
-
-def main_menu_message(user_id) -> str:
-    text_choose = """What would you like to do today?
-
-Monitor
-Active Trades: 0
-Disabled Trades: 0
-
-Auto Snipe
-Active Auto Snipes: 0
-
-Presale
-Active Presales: 0"""
-    return "Your premium statut : 🟢\n" + text_choose if user_data[user_id][
-        'subscribed'] else "Your premium statut : 🔴\n" + text_choose
 
 
 def first_menu_message() -> str:
@@ -1341,6 +1227,9 @@ def extract_user_data(update: Update) -> dict:
         'id': user.id,
         'first_name': user.first_name,
     }
+
+def get_user_data():
+    return user_data
 
 
 if __name__ == '__main__':
