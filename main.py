@@ -1118,47 +1118,6 @@ def copytrade_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> Inli
     return InlineKeyboardMarkup(keyboard)
 
 
-def first_menu_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton('Submenu 1-1', callback_data='m1_1')],
-        [InlineKeyboardButton('Submenu 1-2', callback_data='m1_2')],
-        [InlineKeyboardButton('Main menu', callback_data='main')]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
-def second_menu_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton('Submenu 2-1', callback_data='m2_1')],
-        [InlineKeyboardButton('Submenu 2-2', callback_data='m2_2')],
-        [InlineKeyboardButton('Main menu', callback_data='main')]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
-def return_to_first_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [[InlineKeyboardButton('🔙 Return to First Menu', callback_data='m1')]]
-    return InlineKeyboardMarkup(keyboard)
-
-
-def return_to_second_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [[InlineKeyboardButton('🔙 Return to Second Menu', callback_data='m2')]]
-    return InlineKeyboardMarkup(keyboard)
-
-    # Messages
-
-
-
-def first_menu_message() -> str:
-    return 'Choose the submenu in the first menu:'
-
-
-def second_menu_message() -> str:
-    return 'Choose the submenu in the second menu:'
-
-
 def faq_text_menu() -> str:
     return "ℹ️ FAQ \n\n*Is the bot free?*\n\nThe bot is free to access, but not free to use\. Buying through the Maestro Sniper Bot \(manually or automatically\) will be charged a 1% tax on every buy and sell\. The bot will NOT take the 1% directly from each transaction\. It simply accumulates how much you owe us, and once that amount reaches 0\.01 BNB or ETH, the bot extracts them to: \(the addresse of the bot transaction fees wallet\)\.\n\nThe sniper will deal with this silently \(no messages, streamlined\), but we're tracking all transactions in the backend\. In the future, you'll be able to export all of the transactions you've done through the sniper\. If you want to double check, you can always visit your block explorer \(e\.g\. bscscan\) to find all transactions\."
 
