@@ -7,14 +7,14 @@ from telegram.ext import (Application,
                           filters
                           )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from main import button_bot_name, get_user_data
+from button import button_bot_name
+
 
 # Chains Menu
-async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def chain_menu(update: Update, user_data) -> None:
     query = update.callback_query
     user_id = query.from_user.id
     await query.answer()
-    user_data = get_user_data()
     print(query.data)
 
     # Toggle the specific button's state
@@ -27,17 +27,36 @@ async def chain_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         """🟢 Enable or 🔴 Disable chains based on your preference.
 
 The ⚙️ Setup section can be used to connect or generate a wallet for each chain with a missing wallet.""",
-        reply_markup=chain_menu_keyboard(context, user_id)
+        reply_markup=chain_menu_keyboard(user_data, user_id)
     )
 
-def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
+
+# Generate Wallet from Chain Menu
+async def generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    print("Generating wallet for " + query.data.split('_')[-1] + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text("Generating wallet for " + query.data.split('_')[-1] + "...",
+                                  reply_markup=generate_wallet_keyboard())
+
+
+def generate_wallet_keyboard() -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='toggle_chain_menu')],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def chain_menu_keyboard(user_data, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='main')],  # Return to main menu
         [
-            InlineKeyboardButton(get_button_text('SOL', context, user_id), callback_data='toggle_chain_SOL'),
-            InlineKeyboardButton(get_button_text('ETH', context, user_id), callback_data='toggle_chain_ETH'),
-            InlineKeyboardButton(get_button_text('TRX', context, user_id), callback_data='toggle_chain_TRX')
+            InlineKeyboardButton(get_button_text('SOL', user_data, user_id), callback_data='toggle_chain_SOL'),
+            InlineKeyboardButton(get_button_text('ETH', user_data, user_id), callback_data='toggle_chain_ETH'),
+            InlineKeyboardButton(get_button_text('TRX', user_data, user_id), callback_data='toggle_chain_TRX')
         ],
         [InlineKeyboardButton("▼ Generate or connect a wallet ▼", callback_data='none')],
         [
@@ -48,6 +67,7 @@ def chain_menu_keyboard(context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKe
     ]
     return InlineKeyboardMarkup(keyboard)
 
+
 def get_button_text(chain_name: str, user_data, user_id) -> str:
     print(chain_name)
     print(user_id)
@@ -56,3 +76,35 @@ def get_button_text(chain_name: str, user_data, user_id) -> str:
         print(user_data[user_id]['chain_states'][chain_name])
         return "🟢 " + chain_name if user_data[user_id]['chain_states'][chain_name] else "🔴 " + chain_name
 
+# Connect Wallet from Chain Menu
+async def connect_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    print("Connecting wallet for " + query.data.split('_')[-1] + "...")
+    print(query.data)
+    await query.edit_message_text("Connecting wallet for " + query.data.split('_')[-1] + "...",
+                                  reply_markup=generate_connect_wallet_keyboard(context))
+
+def generate_connect_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='toggle_chain_menu')],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def generate_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE) -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='toggle_chain_menu')],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+# Generate Wallet from Chain Menu
+async def generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    print("Generating wallet for " + query.data.split('_')[-1] + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text("Generating wallet for " + query.data.split('_')[-1] + "...",
+                                  reply_markup=generate_wallet_keyboard(context))

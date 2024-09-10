@@ -7,16 +7,19 @@ from telegram.ext import (Application,
                           filters
                           )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from main import button_bot_name
+from button import button_bot_name
+from user_data import get_user_data
 
-async def main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def main_menu(update: Update, user_data) -> None:
     query = update.callback_query
     user_id = update.effective_user.id
     await query.answer()
     await query.edit_message_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
 
 
-def main_menu_message(user_id, user_data) -> str:
+def main_menu_message(user_id) -> str:
+    user_data = get_user_data()
     text_choose = """What would you like to do today?
 
 Monitor
