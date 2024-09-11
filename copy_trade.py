@@ -8,7 +8,7 @@ from telegram.ext import (Application,
                           filters
                           )
 from button import *
-from user_data import user_data
+from user_data import user_data, message_ids, reply_message_conv, delete_conv
 import re
 import json
 
@@ -22,8 +22,6 @@ wallet_regex = {
     'ETH': r'^0x[a-fA-F0-9]{40}$',  # Ethereum
     'TRX': r'^T[a-zA-Z0-9]{33}$'  # TRX
 }
-
-message_ids = {}
 
 MAX_WALLETS_FREE = 3
 AWAITING_WALLET, AWAITING_NAME = range(2)
@@ -193,31 +191,18 @@ async def receive_wallet_name(update: Update, context: ContextTypes.DEFAULT_TYPE
             }
             wallets_ct.append(to_input)
             user_data[user_id]['wallets'][wallet_type]['GENERAL']['WALLETS_CT']['value'] = wallets_ct
-            message = await update.message.reply_text(
-                f"Wallet '{wallet_name}' with address '{wallet_address}' added successfully to Copy Trade!")
+            text = f"Wallet '{wallet_name}' with address '{wallet_address}' added successfully to Copy Trade!"
+            await reply_message_conv(update, user_id, text)
 
-            # Store the message ID to delete later
-            if user_id not in message_ids:
-                message_ids[user_id] = {'bot': [], 'user': []}
-            message_ids[user_id]['user'].append(update.message.message_id)
-            message_ids[user_id]['bot'].append(message.message_id)
-
-    if user_id in message_ids:
-        for msg_id in message_ids[user_id]['bot']:
-            try:
-                await update.message.chat.delete_message(msg_id)
-            except Exception as e:
-                print(f"Failed to delete bot message {msg_id}: {e}")
-        for msg_id in message_ids[user_id]['user']:
-            try:
-                await update.message.chat.delete_message(msg_id)
-            except Exception as e:
-                print(f"Failed to delete user message {msg_id}: {e}")
+    await delete_conv(update, user_id)
 
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
     print(user_data_json)
 
     return ConversationHandler.END
+
+
+
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:

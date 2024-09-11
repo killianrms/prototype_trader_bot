@@ -1,3 +1,5 @@
+import json
+
 from telegram.ext import (Application,
                           CommandHandler,
                           CallbackQueryHandler,
@@ -9,14 +11,16 @@ from telegram.ext import (Application,
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 
 from button import *
-from user_data import user_data
+from user_data import user_data, message_ids, delete_conv, reply_message_conv
+
+AWAITING_MIN_MC = range(1)
 
 
 async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     await query.edit_message_text("Select target chain:",
-                                  reply_markup=wallet_menu_keyboard(context, query.from_user.id, user_data))
+                                  reply_markup=wallet_menu_keyboard(query.from_user.id))
 
 # Generate Wallet from Menu Wallet
 async def menu_generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -38,7 +42,7 @@ async def generate_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     print("Generating wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, user_data, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=generate_from_wallet_keyboard(context, crypto))
 
 # Show Wallet
@@ -49,7 +53,7 @@ async def show_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     cryptoChoosen = query.data.split('_')[-1]
     print("Showing wallet for " + cryptoChoosen + "...")
     print(query.data)
-    text = text_wallet_menu(cryptoChoosen, user_data, user_id)
+    text = text_wallet_menu(cryptoChoosen, user_id)
     await query.edit_message_text(text, parse_mode="MarkdownV2",
                                   reply_markup=setting_wallet_keyboard(cryptoChoosen))
 
@@ -62,7 +66,7 @@ async def connect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE
     print("Connecting wallet for " + query.data.split('_')[-1] + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, context, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=generate_connect_from_wallet_keyboard(crypto))
 
 
@@ -70,10 +74,11 @@ async def connect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE
 async def disconnect_from_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     crypto = query.data.split('_')[-1]
+    user_id = update.effective_user.id
     await query.answer()
     print("Disconnecting wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, context), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=disconnect_from_wallet_keyboard(crypto))
 
 # Config Wallet
@@ -85,7 +90,7 @@ async def config_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     print("Config wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, user_data, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_wallet_keyboard(crypto))
 
 # Config Buy Wallet
@@ -97,7 +102,7 @@ async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     print("Config buy wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
-    await query.edit_message_text(text_wallet_menu(crypto, user_data, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -110,7 +115,7 @@ async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
             user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
     print("Confirm Trade wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, user_data, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
@@ -124,7 +129,7 @@ async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value']
     print("Dupe Buy wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, user_data, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 
@@ -136,57 +141,67 @@ async def auto_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value'] = not \
             user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
+        user_data[user_id]['wallets'][crypto]['BUY']['bool']['DUPE_BUY']['value'] = user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
     print("Auto Buy wallet for " + crypto + "...")
     print(query.data)
-    await query.edit_message_text(text_wallet_menu(crypto, user_data, user_id), parse_mode="MarkdownV2",
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
 
 # Function to initiate the market cap threshold setting process
-async def min_mc_wallet(update: Update) -> None:
-    # Send a message prompting the user to reply with their desired minimum market cap
-    crypto = update.callback_query.data.split('_')[-1]
-    user_id = update.callback_query.from_user.id
-    prompt_message = await update.message.reply_text(
-        "Reply to this message with your desired minimum market cap threshold in USD. Minimum is $1! ⚠️"
-    )
+async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    print("min_mc_wallet")
+    query = update.callback_query
+    chain = query.data.split('_')[-1]  # Assuming the chain is passed in callback data
+    context.user_data['chain'] = chain
+    await query.answer()
 
-    # Store the prompt message ID to track replies and to delete it later
-    user_data[user_id]['prompt_message_id'] = prompt_message.message_id
-    user_data[user_id]['setting_min_mc'] = True
-    user_data[user_id]['crypto_choosen'] = crypto
+    # Ask for new min_mc value
+    message = await query.message.reply_text(f"Please provide the new min_mc value for the {chain} chain:")
 
-    # Function to handle the user's reply and update the min_mc value
+    # Store message ID to delete later
+    user_id = update.effective_user.id
+    if user_id not in message_ids:
+        message_ids[user_id] = {'bot': [], 'user': []}
+    message_ids[user_id]['bot'].append(message.message_id)
 
-async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_id = update.message.from_user.id
+async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> range | int:
+    user_id = update.effective_user.id
+    try:
+        # Get the chain and new min_mc value from the user input
+        chain = context.user_data.get('chain')
+        new_min_mc = int(update.message.text)
 
-    if user_data[user_id]['setting_min_mc']:
-        user_reply = update.message.text
-        crypto = user_data[user_id]['crypto_choosen']
-        # Validate the user's input
-        try:
-            min_market_cap = int(user_reply)
-            if min_market_cap < 1:
-                await update.message.reply_text("The minimum market cap must be at least $1. Please try again.")
-                return
-        except ValueError:
-            await update.message.reply_text("Invalid input. Please enter a valid number.")
-            return
+        # Update the chain's min_mc value in user data
+        user_data[user_id]['chains'][chain]['min_mc'] = new_min_mc
+        text = f"min_mc for the {chain} chain updated to {new_min_mc}."
+        message = await reply_message_conv(update, user_id, text)
 
-        # Update the user's minimum market cap in the user_data dictionary
-        user_data[user_id]['wallets'][crypto]['BUY']['int']['MIN_MC']['value'] = min_market_cap
+        # Store message IDx to delete later
+        if user_id not in message_ids:
+            message_ids[user_id] = {'bot': [], 'user': []}
+        message_ids[user_id]['user'].append(update.message.message_id)
+        message_ids[user_id]['bot'].append(message.message_id)
+    except ValueError:
+        # Handle invalid input (non-integer value)
+        message = await update.message.reply_text("Invalid value. Please provide an integer for the min_mc value.")
+        message_ids[user_id]['bot'].append(message.message_id)
+        return AWAITING_MIN_MC
 
-        # Delete the prompt message
-        prompt_message_id = user_data[user_id]['prompt_message_id']
-        if prompt_message_id:
-            await context.bot.delete_message(chat_id=update.message.chat_id, message_id=prompt_message_id)
+    # Delete conversation messages
+    await delete_conv(update, user_id)
 
-        # Confirm the update to the user
-        await update.message.reply_text(f"Your minimum market cap has been set to ${min_market_cap}.")
+    # Print user data for verification
+    user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+    print(user_data_json)
 
-        # Clear the state
-        user_data[user_id]['setting_min_mc'] = False
-        user_data[user_id]['crypto'] = None
+    return ConversationHandler.END
+
+    # Function to cancel the operation
+
+
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("Operation cancelled.")
+    return ConversationHandler.END
 
 
 def generate_from_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, crypto) -> InlineKeyboardMarkup:
@@ -196,7 +211,7 @@ def generate_from_wallet_keyboard(context: ContextTypes.DEFAULT_TYPE, crypto) ->
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def wallet_menu_keyboard(context, user_id,user_data) -> InlineKeyboardMarkup:
+def wallet_menu_keyboard(user_id) -> InlineKeyboardMarkup:
     # for chain in chains create button
     keyboard = [
         button_bot_name(),
@@ -224,7 +239,7 @@ def generate_menu_wallet_keyboard(crypto) -> InlineKeyboardMarkup:
 
     return InlineKeyboardMarkup(keyboard)
 
-def text_wallet_menu(crypto, user_data, user_id) -> str:
+def text_wallet_menu(crypto, user_id) -> str:
     adresse = "Adresse : "  # + adresse de la wallet
     # mettre en majuscule et en  gras le text
     chain = "Chain : *" + crypto.upper() + "*"

@@ -7,7 +7,12 @@ from telegram.ext import (Application,
                           filters
                           )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from button import button_bot_name
 
+async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    await query.edit_message_text(faq_text_menu(), reply_markup=faq_keyboard())
 
 async def show_faq_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None :
     #get the text of the button from the callback data
@@ -34,6 +39,38 @@ async def show_faq_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     #get the text of the button
     text = switcher.get(button_name, "Invalid button")
     await query.edit_message_text(text, parse_mode="MarkdownV2", reply_markup=faq_answer_keyboard())
+
+def faq_answer_keyboard() -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='faq')]
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
+def faq_keyboard() -> InlineKeyboardMarkup:
+    keyboard = [
+        button_bot_name(),
+        [InlineKeyboardButton("🔙 Return", callback_data='menu')],
+        # Secutiry,  Wallet Setting
+        [InlineKeyboardButton("Security", callback_data='faq_security'),
+         InlineKeyboardButton("Wallet Setting", callback_data='faq_wallet_setting')],
+        # Manual Transactions, Call Channels
+        [InlineKeyboardButton("Manual Transactions", callback_data='faq_manual_transactions'),
+         InlineKeyboardButton("Call Channels", callback_data='faq_call_channels')],
+        # Auto_Buy Warnings, Transaction Error Messages
+        [InlineKeyboardButton("Auto_Buy Warnings", callback_data='faq_auto_buy_warnings'),
+         InlineKeyboardButton("Transaction Error Messages", callback_data='faq_transaction_error_messages')],
+        # Trade Monitor, Multi-Wallet
+        [InlineKeyboardButton("Trade Monitor", callback_data='faq_trade_monitor'),
+         InlineKeyboardButton("Multi-Wallet", callback_data='faq_multi_wallet')],
+        # Presales, Copytrade
+        [InlineKeyboardButton("Presales", callback_data='faq_presales'),
+         InlineKeyboardButton("Copytrade", callback_data='faq_copytrade')],
+        # LP/Method Sniping, Smart Rug Auto Sell
+        [InlineKeyboardButton("LP/Method Sniping", callback_data='faq_lp_method_sniping'),
+         InlineKeyboardButton("Smart Rug Auto Sell", callback_data='faq_smart_rug_auto_sell')],
+    ]
+    return InlineKeyboardMarkup(keyboard)
 
 def faq_text_menu() -> str:
     return "ℹ️ FAQ \n\n*Is the bot free?*\n\nThe bot is free to access, but not free to use\. Buying through the Maestro Sniper Bot \(manually or automatically\) will be charged a 1% tax on every buy and sell\. The bot will NOT take the 1% directly from each transaction\. It simply accumulates how much you owe us, and once that amount reaches 0\.01 BNB or ETH, the bot extracts them to: \(the addresse of the bot transaction fees wallet\)\.\n\nThe sniper will deal with this silently \(no messages, streamlined\), but we're tracking all transactions in the backend\. In the future, you'll be able to export all of the transactions you've done through the sniper\. If you want to double check, you can always visit your block explorer \(e\.g\. bscscan\) to find all transactions\."

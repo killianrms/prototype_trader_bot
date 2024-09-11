@@ -1,25 +1,12 @@
 import os
 
-
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import (Application,
-                          CommandHandler,
-                          CallbackQueryHandler,
-                          ConversationHandler,
-                          MessageHandler,
-                          ContextTypes,
-                          filters
-                          )
-from user_data import user_data
-
-from functools import partial
-from copy_trade import *
-from faq_menu import *
 
 from chain_menu import *
-from wallets import *
+from copy_trade import *
+from faq_menu import *
 from main_menu import *
+from wallets import *
 
 load_dotenv()
 
@@ -472,57 +459,11 @@ async def premium(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await query.edit_message_text(main_menu_message(user_id), reply_markup=main_menu_keyboard())
 
 
-async def faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text(faq_text_menu(), reply_markup=faq_keyboard())
-
-
-
-
-
 
 
 # Error handling
 async def error(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     print(f'Update {update} caused error {context.error}')
-
-
-# Keyboards
-def faq_answer_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='faq')]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-def faq_keyboard() -> InlineKeyboardMarkup:
-    keyboard = [
-        button_bot_name(),
-        [InlineKeyboardButton("🔙 Return", callback_data='menu')],
-        # Secutiry,  Wallet Setting
-        [InlineKeyboardButton("Security", callback_data='faq_security'),
-         InlineKeyboardButton("Wallet Setting", callback_data='faq_wallet_setting')],
-        # Manual Transactions, Call Channels
-        [InlineKeyboardButton("Manual Transactions", callback_data='faq_manual_transactions'),
-         InlineKeyboardButton("Call Channels", callback_data='faq_call_channels')],
-        # Auto_Buy Warnings, Transaction Error Messages
-        [InlineKeyboardButton("Auto_Buy Warnings", callback_data='faq_auto_buy_warnings'),
-         InlineKeyboardButton("Transaction Error Messages", callback_data='faq_transaction_error_messages')],
-        # Trade Monitor, Multi-Wallet
-        [InlineKeyboardButton("Trade Monitor", callback_data='faq_trade_monitor'),
-         InlineKeyboardButton("Multi-Wallet", callback_data='faq_multi_wallet')],
-        # Presales, Copytrade
-        [InlineKeyboardButton("Presales", callback_data='faq_presales'),
-         InlineKeyboardButton("Copytrade", callback_data='faq_copytrade')],
-        # LP/Method Sniping, Smart Rug Auto Sell
-        [InlineKeyboardButton("LP/Method Sniping", callback_data='faq_lp_method_sniping'),
-         InlineKeyboardButton("Smart Rug Auto Sell", callback_data='faq_smart_rug_auto_sell')],
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
-
 
 def change_value_bool(context: ContextTypes.DEFAULT_TYPE, crypto: str, param_name: str) -> None:
     if param_name in context.user_data['wallets'][crypto]['BUY']['bool']:
@@ -573,7 +514,7 @@ if __name__ == '__main__':
 
     # Handlers
     application.add_handler(CommandHandler('start', start))
-    application.add_handler(CallbackQueryHandler(partial(main_menu, user_data=user_data), pattern='main'))
+    application.add_handler(CallbackQueryHandler(main_menu, pattern='main'))
     application.add_handler(CallbackQueryHandler(generate_wallet, pattern='generate_wallet_.*'))
     application.add_handler(CallbackQueryHandler(generate_from_wallet, pattern='generate_from_wallet_*'))
 
@@ -582,7 +523,7 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(disconnect_from_wallet, pattern='disconnect_from_wallet_.*'))
 
     application.add_handler(CallbackQueryHandler(wallet_menu, pattern='wallet'))
-    application.add_handler(CallbackQueryHandler(partial(chain_menu, user_data=user_data), pattern='toggle_chain_.*'))
+    application.add_handler(CallbackQueryHandler(chain_menu, pattern='toggle_chain_.*'))
     application.add_handler(CallbackQueryHandler(menu_generate_wallet, pattern='menu_generate_wallet_.*'))
     application.add_handler(CallbackQueryHandler(show_wallet, pattern='show_wallet_.*'))
 
@@ -632,7 +573,7 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(faq, pattern='faq'))
 
 
-    conv_handler = ConversationHandler(
+    conv_handler_ct_wallet = ConversationHandler(
         entry_points=[CallbackQueryHandler(add_wallet_ct, pattern='add_ct_wallet_.*')],
         states={
             AWAITING_WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_wallet_address)],
@@ -641,7 +582,14 @@ if __name__ == '__main__':
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
-    application.add_handler(conv_handler)
+    conv_handler_wallet_min_mc = ConversationHandler(
+        entry_points=[CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*')],
+        states={
+            AWAITING_MIN_MC: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_min_mc)],
+        },
+    )
+
+    application.add_handler(conv_handler_ct_wallet)
 
     # Error handler
     application.add_error_handler(error)

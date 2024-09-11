@@ -8,10 +8,10 @@ from telegram.ext import (Application,
                           )
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from button import button_bot_name
-from user_data import get_user_data
+from user_data import user_data
 
 
-async def main_menu(update: Update, user_data) -> None:
+async def main_menu(update: Update,context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     user_id = update.effective_user.id
     await query.answer()
@@ -19,7 +19,6 @@ async def main_menu(update: Update, user_data) -> None:
 
 
 def main_menu_message(user_id) -> str:
-    user_data = get_user_data()
     text_choose = """What would you like to do today?
 
 Monitor
