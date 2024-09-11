@@ -518,6 +518,7 @@ async def menu_generate_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     print(query.data)
     print(context.user_data)
     message = "Generating wallet for " + cryptoChoosen + "..."
+    
     await query.edit_message_text(message, reply_markup=generate_menu_wallet_keyboard(context, "chain", cryptoChoosen))
 
 
