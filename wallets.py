@@ -1,4 +1,5 @@
 import json
+from operator import concat
 
 from telegram.ext import (Application,
                           CommandHandler,
@@ -103,7 +104,7 @@ async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     print(query.data)
     print(context.user_data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
+                                  reply_markup=config_buy_wallet_keyboard(crypto, user_id))
 
 async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -116,7 +117,7 @@ async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     print("Confirm Trade wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
+                                  reply_markup=config_buy_wallet_keyboard(crypto, user_id))
 
 
 async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -130,7 +131,7 @@ async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     print("Dupe Buy wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
+                                  reply_markup=config_buy_wallet_keyboard(crypto, user_id))
 
 
 async def auto_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -145,10 +146,10 @@ async def auto_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     print("Auto Buy wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, context, user_id))
+                                  reply_markup=config_buy_wallet_keyboard(crypto, user_id))
 
 # Function to initiate the market cap threshold setting process
-async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->  int:
     print("min_mc_wallet")
     query = update.callback_query
     chain = query.data.split('_')[-1]  # Assuming the chain is passed in callback data
@@ -164,7 +165,9 @@ async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         message_ids[user_id] = {'bot': [], 'user': []}
     message_ids[user_id]['bot'].append(message.message_id)
 
-async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> range | int:
+    return AWAITING_MIN_MC
+
+async def receive_min_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
     try:
         # Get the chain and new min_mc value from the user input
@@ -172,20 +175,15 @@ async def set_market_cap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         new_min_mc = int(update.message.text)
 
         # Update the chain's min_mc value in user data
-        user_data[user_id]['chains'][chain]['min_mc'] = new_min_mc
+        user_data[user_id]['wallets'][chain]['BUY']['int']['MIN_MC']['value'] = new_min_mc
         text = f"min_mc for the {chain} chain updated to {new_min_mc}."
-        message = await reply_message_conv(update, user_id, text)
+        await reply_message_conv(update, user_id, text)
 
-        # Store message IDx to delete later
-        if user_id not in message_ids:
-            message_ids[user_id] = {'bot': [], 'user': []}
-        message_ids[user_id]['user'].append(update.message.message_id)
-        message_ids[user_id]['bot'].append(message.message_id)
     except ValueError:
         # Handle invalid input (non-integer value)
         message = await update.message.reply_text("Invalid value. Please provide an integer for the min_mc value.")
         message_ids[user_id]['bot'].append(message.message_id)
-        return AWAITING_MIN_MC
+
 
     # Delete conversation messages
     await delete_conv(update, user_id)
@@ -248,23 +246,31 @@ def text_wallet_menu(crypto, user_id) -> str:
     general_params = "📍 General"
     buy_params = "📌 Buy"
     for param in user_data[user_id]['wallets'][crypto]['BUY']['bool']:
-        buy_params += "\n" + get_button_menu_param_name(param, crypto, 'bool', user_id)
+        buy_params += "\n" + get_button_menu_param_name(param, crypto, 'bool', user_id, 'BUY')
     buy_params += "\n"
     for param in user_data[user_id]['wallets'][crypto]['BUY']['int']:
-        buy_params += "\n" + get_button_menu_param_name(param, crypto, 'int', user_id)
+        buy_params += "\n" + get_button_menu_param_name(param, crypto, 'int', user_id,'BUY')
     sell_params = "📌 Sell"
+
+    for param in user_data[user_id]['wallets'][crypto]['SELL']['bool']:
+        sell_params += "\n" + get_button_menu_param_name(param, crypto, 'bool', user_id,'SELL')
+    sell_params += "\n"
+    for param in user_data[user_id]['wallets'][crypto]['SELL']['int']:
+        sell_params += "\n" + get_button_menu_param_name(param, crypto, 'int', user_id, 'SELL')
+
     text = f"{adresse}\n{chain}\n{balance}\n\n{general_params}\n\n{buy_params}\n\n{sell_params}"
     return text
 
-def get_button_menu_param_name(param_name: str, crypto, type: str, user_id) -> str:
+def get_button_menu_param_name(param_name: str, crypto, type: str, user_id, BorS) -> str:
     if type == 'bool':
-        print(user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'])
-        return user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "✅ " if \
-            user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['value'] else \
-            user_data[user_id]['wallets'][crypto]['BUY']['bool'][param_name]['name'] + "❌ "
+        print(user_data[user_id]['wallets'][crypto][BorS]['bool'][param_name]['name'])
+        return user_data[user_id]['wallets'][crypto][BorS]['bool'][param_name]['name'] + "✅ " if \
+            user_data[user_id]['wallets'][crypto][BorS]['bool'][param_name]['value'] else \
+            user_data[user_id]['wallets'][crypto][BorS]['bool'][param_name]['name'] + "❌ "
     elif type == 'int':
-        return user_data[user_id]['wallets'][crypto]['BUY']['int'][param_name]['name'] + str(
-            user_data[user_id]['wallets'][crypto]['BUY']['int'][param_name]['value'])
+        value = str(user_data[user_id]['wallets'][crypto][BorS]['int'][param_name]['value'])
+        name = user_data[user_id]['wallets'][crypto][BorS]['int'][param_name]['name']
+        return name + value
 
 
 def setting_wallet_keyboard(crypto: str) -> InlineKeyboardMarkup:
@@ -306,7 +312,7 @@ def config_wallet_keyboard(crypto: str) -> InlineKeyboardMarkup:
     ]
     return InlineKeyboardMarkup(keyboard)
 
-def config_buy_wallet_keyboard(crypto: str, context: ContextTypes.DEFAULT_TYPE, user_id) -> InlineKeyboardMarkup:
+def config_buy_wallet_keyboard(crypto: str, user_id) -> InlineKeyboardMarkup:
     keyboard = [
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='config_wallet_' + crypto)],

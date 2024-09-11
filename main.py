@@ -536,9 +536,6 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(dupe_buy_wallet, pattern='dupe_buy_wallet_.*'))
     application.add_handler(CallbackQueryHandler(auto_buy_wallet, pattern='auto_buy_wallet_.*'))
 
-    application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
-    application.add_handler(MessageHandler(filters.REPLY & filters.TEXT, set_market_cap))
-
     application.add_handler(CallbackQueryHandler(premium, pattern='premium'))
 
     #
@@ -587,9 +584,11 @@ if __name__ == '__main__':
         states={
             AWAITING_MIN_MC: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_min_mc)],
         },
+        fallbacks=[CommandHandler('cancel', cancel)],
     )
 
     application.add_handler(conv_handler_ct_wallet)
+    application.add_handler(conv_handler_wallet_min_mc)
 
     # Error handler
     application.add_error_handler(error)
