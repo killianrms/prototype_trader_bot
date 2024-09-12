@@ -85,17 +85,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Min MCap/Liq : "
                         },
                         'GAS_DELTA': {
-                            'value': 0,
+                            'value': 0.001,
                             'text': "Gas Delta",
                             'name': "Buy Gas Delta : "
                         },
                         'PIA': {
-                            'value': 0,
+                            'value': 25,
                             'text': "Price Impact Alert",
                             'name': "Price impact alert : "
                         },
                         'SLIPPAGE': {
-                            'value': 0,
+                            'value': 10,
                             'text': "Slippage",
                             'name': "Slippage : "
                         },
@@ -146,17 +146,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Sell Low Amount : "
                         },
                         'GAS_DELTA': {
-                            'value': 0,
+                            'value': 0.001,
                             'text': "Gas Delta",
                             'name': "Sell Gas Price : "
                         },
                         'PIA': {
-                            'value': 0,
+                            'value': 50,
                             'text': "Price Impact Alert",
                             'name': "Price impact alert : "
                         },
                         'SLIPPAGE': {
-                            'value': 0,
+                            'value': 10,
                             'text': "Slippage",
                             'name': "Slippage : "
                         },
@@ -222,17 +222,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Min MCap/Liq : "
                         },
                         'GAS_DELTA': {
-                            'value': 0,
+                            'value': 0.001,
                             'text': "Gas Delta",
                             'name': "Buy Gas Delta : "
                         },
                         'PIA': {
-                            'value': 0,
-                            'text': "Price Impact Alert : ",
+                            'value': 25,
+                            'text': "Price Impact Alert",
                             'name': "Price impact alert : "
                         },
                         'SLIPPAGE': {
-                            'value': 0,
+                            'value': 10,
                             'text': "Slippage",
                             'name': "Slippage : "
                         },
@@ -283,17 +283,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Sell Low Amount : "
                         },
                         'GAS_DELTA': {
-                            'value': 0,
+                            'value': 0.001,
                             'text': "Gas Delta",
                             'name': "Sell Gas Price : "
                         },
                         'PIA': {
-                            'value': 0,
+                            'value': 50,
                             'text': "Price Impact Alert",
                             'name': "Price impact alert : "
                         },
                         'SLIPPAGE': {
-                            'value': 0,
+                            'value': 10,
                             'text': "Slippage",
                             'name': "Slippage : "
                         },
@@ -359,17 +359,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Min MCap/Liq : "
                         },
                         'GAS_DELTA': {
-                            'value': 0,
+                            'value': 0.001,
                             'text': "Gas Delta",
                             'name': "Buy Gas Delta : "
                         },
                         'PIA': {
-                            'value': 0,
-                            'text': "Price Impact Alert : ",
+                            'value': 25,
+                            'text': "Price Impact Alert",
                             'name': "Price impact alert : "
                         },
                         'SLIPPAGE': {
-                            'value': 0,
+                            'value': 10,
                             'text': "Slippage",
                             'name': "Slippage : "
                         },
@@ -420,17 +420,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                             'name': "Sell Low Amount : "
                         },
                         'GAS_DELTA': {
-                            'value': 0,
+                            'value': 0.001,
                             'text': "Gas Delta",
                             'name': "Sell Gas Price : "
                         },
                         'PIA': {
-                            'value': 0,
+                            'value': 50,
                             'text': "Price Impact Alert",
                             'name': "Price impact alert : "
                         },
                         'SLIPPAGE': {
-                            'value': 0,
+                            'value': 10,
                             'text': "Slippage",
                             'name': "Slippage : "
                         },
@@ -538,11 +538,8 @@ if __name__ == '__main__':
 
     application.add_handler(CallbackQueryHandler(premium, pattern='premium'))
 
-    #
-    # application.add_handler(CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*'))
     # application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
-    #
-    # application.add_handler(CallbackQueryHandler(max_mc_wallet, pattern='max_mc_wallet_.*'))
+
     # application.add_handler(CallbackQueryHandler(erase_max_mc_wallet, pattern='erase_max_mc_wallet_.*'))
     #
     # application.add_handler(CallbackQueryHandler(min_liq_wallet, pattern='min_liq_wallet_.*'))
@@ -582,11 +579,75 @@ if __name__ == '__main__':
     conv_handler_wallet_min_mc = ConversationHandler(
         entry_points=[CallbackQueryHandler(min_mc_wallet, pattern='min_mc_wallet_.*')],
         states={
-            AWAITING_MIN_MC: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_min_mc)],
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_min_mc)],
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
+    conv_handler_wallet_max_mc = ConversationHandler(
+        entry_points=[CallbackQueryHandler(max_mc_wallet, pattern='max_mc_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_max_mc)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    conv_handler_wallet_min_liq = ConversationHandler(
+        entry_points=[CallbackQueryHandler(min_liq_wallet, pattern='min_liq_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_min_liq)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    conv_handler_wallet_max_liq = ConversationHandler(
+        entry_points=[CallbackQueryHandler(max_liq_wallet, pattern='max_liq_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_max_liq)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    conv_handler_wallet_min_mc_liq = ConversationHandler(
+        entry_points=[CallbackQueryHandler(min_mc_liq_wallet, pattern='min_mc_liq_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_min_mc_liq)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    conv_handler_wallet_gas_delta = ConversationHandler(
+        entry_points=[CallbackQueryHandler(gas_delta_wallet, pattern='gas_delta_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_gas_delta)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    conv_handler_wallet_pia = ConversationHandler(
+        entry_points=[CallbackQueryHandler(pia_wallet, pattern='pia_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_pia)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    conv_handler_wallet_slippage = ConversationHandler(
+        entry_points=[CallbackQueryHandler(slippage_wallet, pattern='slippage_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_slippage)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+    application.add_handler(CallbackQueryHandler(config_sell_wallet, pattern='config_sell_wallet_.*'))
+    application.add_handler(conv_handler_wallet_slippage)
+    application.add_handler(conv_handler_wallet_pia)
+    application.add_handler(conv_handler_wallet_gas_delta)
+    application.add_handler(conv_handler_wallet_min_mc_liq)
+    application.add_handler(conv_handler_wallet_min_liq)
+    application.add_handler(conv_handler_wallet_max_liq)
+    application.add_handler(conv_handler_wallet_max_mc)
     application.add_handler(conv_handler_ct_wallet)
     application.add_handler(conv_handler_wallet_min_mc)
 
