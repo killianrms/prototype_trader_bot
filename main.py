@@ -651,6 +651,18 @@ if __name__ == '__main__':
     application.add_handler(conv_handler_ct_wallet)
     application.add_handler(conv_handler_wallet_min_mc)
 
+    application.add_handler(CallbackQueryHandler(erase_gas_delta_wallet, pattern='erase_gd_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_max_mc_wallet, pattern='erase_max_mc_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_min_liq_wallet, pattern='erase_min_liq_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_max_liq_wallet, pattern='erase_max_liq_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_min_mc_liq_wallet, pattern='erase_min_mc_liq_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_pia_wallet, pattern='erase_pia_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_slippage_wallet, pattern='erase_slippage_wallet_.*'))
+
+
+
+
     # Error handler
     application.add_error_handler(error)
 

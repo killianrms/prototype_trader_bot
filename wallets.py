@@ -99,6 +99,7 @@ async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     crypto = query.data.split('_')[-1]
     user_id = query.from_user.id
     await query.answer()
+    context.user_data['BorS'] = 'BUY'
     print("Config buy wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
@@ -110,6 +111,7 @@ async def config_sell_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE)
     crypto = query.data.split('_')[-1]
     user_id = query.from_user.id
     await query.answer()
+    context.user_data['BorS'] = 'SELL'
     print("Config sell wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
@@ -177,6 +179,24 @@ async def awaiting_value_response(context, update,to_change)->int:
 
     return AWAITING_CHANGE
 
+async def erase_min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard= config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard= config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto][BorS]['int']['MIN_MC']['value'] = 0
+    print("Erase value of min mc wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
 async def receive_min_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
     try:
@@ -238,6 +258,24 @@ async def receive_max_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Function to cancel the operation
 
+async def erase_max_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['MAX_MC']['value'] = 0
+    print("Erase value of max mc wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
 async def min_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("min_liq_wallet")
     return await awaiting_value_response(context, update, 'min_liq')
@@ -269,6 +307,24 @@ async def receive_min_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     return ConversationHandler.END
 
     # Function to cancel the operation
+
+async def erase_min_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['MIN_LIQ']['value'] = 0
+    print("Erase value of min liq wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
 
 async def max_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("max_liq_wallet")
@@ -302,6 +358,24 @@ async def receive_max_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Function to cancel the operation
 
+async def erase_max_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['MAX_LIQ']['value'] = 0
+    print("Erase value of max liq wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
 async def min_mc_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("min_mc_liq_wallet")
     return await awaiting_value_response(context, update, 'min_mc_liq')
@@ -333,6 +407,24 @@ async def receive_min_mc_liq(update: Update, context: ContextTypes.DEFAULT_TYPE)
     return ConversationHandler.END
 
     # Function to cancel the operation
+
+async def erase_min_mc_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['MIN_MC_LIQ']['value'] = 0
+    print("Erase value of min mc liq wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
 
 async def gas_delta_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("gas_delta_wallet")
@@ -366,6 +458,24 @@ async def receive_gas_delta(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     # Function to cancel the operation
 
+async def erase_gas_delta_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['GAS_DELTA']['value'] = 0.001
+    print("Erase value of gas delta wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
 async def pia_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("pia_wallet")
     return await awaiting_value_response(context, update, 'pia')
@@ -398,6 +508,24 @@ async def receive_pia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     # Function to cancel the operation
 
+async def erase_pia_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['PIA']['value'] = 25
+    print("Erase value of pia wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
 async def slippage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("slippage_wallet")
     return await awaiting_value_response(context, update, 'slippage')
@@ -429,6 +557,26 @@ async def receive_slippage(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return ConversationHandler.END
 
     # Function to cancel the operation
+
+async def erase_slippage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    else:
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    if crypto in user_data[user_id]['wallets']:
+        user_data[user_id]['wallets'][crypto]['BUY']['int']['SLIPPAGE']['value'] = 0
+    print("Erase value of slippage wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
+
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Operation cancelled.")
@@ -511,7 +659,9 @@ def get_button_menu_param_name(param_name: str, crypto, type: str, user_id, BorS
                 value = "*Default\(50%\)*"
 
         if param_name == 'GAS_DELTA' and user_data[user_id]['wallets'][crypto][BorS]['int'][param_name]['value'] == 0.001:
-            value = "*Default\(0\.001%\)*"
+            value = "*Default\(0.001%\)*"
+        if '.' in value:
+            value = value.replace('.', '\.')
         return name + value
 
 
