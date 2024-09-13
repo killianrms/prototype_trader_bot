@@ -15,6 +15,8 @@ from user_data import user_data, message_ids, delete_conv, reply_message_conv
 
 AWAITING_CHANGE = range(1)
 
+message_orginal = {}
+
 
 async def wallet_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -99,6 +101,8 @@ async def config_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     crypto = query.data.split('_')[-1]
     user_id = query.from_user.id
     await query.answer()
+    message_orginal['chat_id'] = update.effective_message.chat_id
+    message_orginal['message_id'] = update.effective_message.message_id
     context.user_data['BorS'] = 'BUY'
     print("Config buy wallet for " + crypto + "...")
     print(query.data)
@@ -111,12 +115,22 @@ async def config_sell_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE)
     crypto = query.data.split('_')[-1]
     user_id = query.from_user.id
     await query.answer()
+    message_orginal['chat_id'] = update.effective_message.chat_id
+    message_orginal['message_id'] = update.effective_message.message_id
     context.user_data['BorS'] = 'SELL'
     print("Config sell wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=config_sell_wallet_keyboard(crypto, user_id))
+
+async def update_original_message(context, user_id, crypto):
+    await context.bot.edit_message_text(
+        text_wallet_menu(crypto, user_id),
+        chat_id=message_orginal['chat_id'],
+        message_id=message_orginal['message_id'],
+        parse_mode="MarkdownV2",
+        reply_markup=config_buy_wallet_keyboard(crypto, user_id))
 
 async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -199,9 +213,9 @@ async def erase_min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def receive_min_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new min_mc value from the user input
-        chain = context.user_data.get('chain')
         new_min_mc = int(update.message.text)
 
         # Update the chain's min_mc value in user data
@@ -217,6 +231,7 @@ async def receive_min_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
