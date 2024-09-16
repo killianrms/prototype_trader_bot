@@ -137,13 +137,18 @@ async def confirm_trade_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
     crypto = query.data.split('_')[-1]
     user_id = query.from_user.id
     await query.answer()
+    keyboard = []
     if crypto in user_data[user_id]['wallets']:
-        user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not \
-            user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
+        if context.user_data['BorS'] == 'BUY' :
+            keyboard = config_buy_wallet_keyboard(crypto, user_id)
+            user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['CONFIRM_TRADE']['value']
+        elif context.user_data['BorS'] == 'SELL' :
+            keyboard = config_sell_wallet_keyboard(crypto, user_id)
+            user_data[user_id]['wallets'][crypto]['SELL']['bool']['CONFIRM_TRADE']['value'] = not user_data[user_id]['wallets'][crypto]['SELL']['bool']['CONFIRM_TRADE']['value']
     print("Confirm Trade wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, user_id))
+                                  reply_markup=keyboard)
 
 
 async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -160,23 +165,22 @@ async def dupe_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
                                   reply_markup=config_buy_wallet_keyboard(crypto, user_id))
 
 
-async def auto_buy_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
+async def auto_buy_sell_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
-        user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value'] = not \
-            user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
+        if context.user_data['BorS'] == 'BUY' :
+            user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value'] = not user_data[user_id]['wallets'][crypto]['BUY']['bool']['AUTO_BUY']['value']
+        elif context.user_data['BorS'] == 'SELL' :
+            user_data[user_id]['wallets'][crypto]['SELL']['bool']['AUTO_SELL']['value'] = not user_data[user_id]['wallets'][crypto]['SELL']['bool']['AUTO_SELL']['value']
     print("Auto Buy wallet for " + crypto + "...")
     print(query.data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
-                                  reply_markup=config_buy_wallet_keyboard(crypto, user_id))
+                                  reply_markup=keyboard)
 
 # Function to initiate the market cap threshold setting process
 async def min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->  int:
     print("min_mc_wallet")
-    return await awaiting_value_response(context, update, 'min_mc')
+    return await awaiting_value_response(context, update, 'min mc')
 
 async def awaiting_value_response(context, update,to_change)->int:
     query = update.callback_query
@@ -194,15 +198,7 @@ async def awaiting_value_response(context, update,to_change)->int:
     return AWAITING_CHANGE
 
 async def erase_min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
-    BorS = context.user_data.get('BorS')
-    if BorS == 'BUY':
-        keyboard= config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard= config_sell_wallet_keyboard(crypto, user_id)
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto][BorS]['int']['MIN_MC']['value'] = 0
     print("Erase value of min mc wallet for " + crypto + "...")
@@ -210,6 +206,20 @@ async def erase_min_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE
     print(context.user_data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=keyboard)
+
+
+async def gen_keyboard_config_wallet(context, update):
+    query = update.callback_query
+    crypto = query.data.split('_')[-1]
+    user_id = query.from_user.id
+    await query.answer()
+    BorS = context.user_data.get('BorS')
+    if BorS == 'BUY':
+        keyboard = config_buy_wallet_keyboard(crypto, user_id)
+    elif BorS == ' SELL':
+        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    return BorS, crypto, keyboard, query, user_id
+
 
 async def receive_min_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
@@ -243,13 +253,13 @@ async def receive_min_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 async def max_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("max_mc_wallet")
-    return await awaiting_value_response(context, update, 'max_mc')
+    return await awaiting_value_response(context, update, 'max mc')
 
 async def receive_max_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new max_mc value from the user input
-        chain = context.user_data.get('chain')
         new_max_mc = int(update.message.text)
 
         # Update the chain's max_mc value in user data
@@ -264,6 +274,7 @@ async def receive_max_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -274,15 +285,7 @@ async def receive_max_mc(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     # Function to cancel the operation
 
 async def erase_max_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
-    BorS = context.user_data.get('BorS')
-    if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['int']['MAX_MC']['value'] = 0
     print("Erase value of max mc wallet for " + crypto + "...")
@@ -293,13 +296,14 @@ async def erase_max_mc_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 async def min_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("min_liq_wallet")
-    return await awaiting_value_response(context, update, 'min_liq')
+    return await awaiting_value_response(context, update, 'min liq')
 
 async def receive_min_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new min_liq value from the user input
-        chain = context.user_data.get('chain')
+
         new_min_liq = int(update.message.text)
 
         # Update the chain's min_liq value in user data
@@ -314,6 +318,7 @@ async def receive_min_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -324,15 +329,7 @@ async def receive_min_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Function to cancel the operation
 
 async def erase_min_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
-    BorS = context.user_data.get('BorS')
-    if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['int']['MIN_LIQ']['value'] = 0
     print("Erase value of min liq wallet for " + crypto + "...")
@@ -343,13 +340,13 @@ async def erase_min_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def max_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("max_liq_wallet")
-    return await awaiting_value_response(context, update, 'max_liq')
+    return await awaiting_value_response(context, update, 'max liq')
 
 async def receive_max_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new max_liq value from the user input
-        chain = context.user_data.get('chain')
         new_max_liq = int(update.message.text)
 
         # Update the chain's max_liq value in user data
@@ -364,6 +361,7 @@ async def receive_max_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -374,15 +372,7 @@ async def receive_max_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # Function to cancel the operation
 
 async def erase_max_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
-    BorS = context.user_data.get('BorS')
-    if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['int']['MAX_LIQ']['value'] = 0
     print("Erase value of max liq wallet for " + crypto + "...")
@@ -393,13 +383,13 @@ async def erase_max_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYP
 
 async def min_mc_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("min_mc_liq_wallet")
-    return await awaiting_value_response(context, update, 'min_mc_liq')
+    return await awaiting_value_response(context, update, 'min mc liq')
 
 async def receive_min_mc_liq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new min_mc_liq value from the user input
-        chain = context.user_data.get('chain')
         new_min_mc_liq = int(update.message.text)
 
         # Update the chain's min_mc_liq value in user data
@@ -414,6 +404,7 @@ async def receive_min_mc_liq(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -424,15 +415,7 @@ async def receive_min_mc_liq(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # Function to cancel the operation
 
 async def erase_min_mc_liq_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
-    BorS = context.user_data.get('BorS')
-    if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['int']['MIN_MC_LIQ']['value'] = 0
     print("Erase value of min mc liq wallet for " + crypto + "...")
@@ -443,17 +426,17 @@ async def erase_min_mc_liq_wallet(update: Update, context: ContextTypes.DEFAULT_
 
 async def gas_delta_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     print("gas_delta_wallet")
-    return await awaiting_value_response(context, update, 'gas_delta')
+    return await awaiting_value_response(context, update, 'gas delta')
 
 async def receive_gas_delta(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new gas_delta value from the user input
-        chain = context.user_data.get('chain')
         new_gas_delta = float(update.message.text)
 
         # Update the chain's gas_delta value in user data
-        user_data[user_id]['wallets'][chain]['BUY']['int']['GAS_DELTA']['value'] = new_gas_delta
+        user_data[user_id]['wallets'][chain][context.user_data['BorS']]['int']['GAS_DELTA']['value'] = new_gas_delta
         text = f"gas_delta for the {chain} chain updated to {new_gas_delta}."
         await reply_message_conv(update, user_id, text)
 
@@ -464,6 +447,7 @@ async def receive_gas_delta(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -480,11 +464,16 @@ async def erase_gas_delta_wallet(update: Update, context: ContextTypes.DEFAULT_T
     await query.answer()
     BorS = context.user_data.get('BorS')
     if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
-    if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['int']['GAS_DELTA']['value'] = 0.001
+    else:
+        user_data[user_id]['wallets'][crypto]['SELL']['int']['GAS_DELTA']['value'] = 0.001
+    if crypto in user_data[user_id]['wallets']:
+        if BorS == 'BUY':
+            keyboard = config_buy_wallet_keyboard(crypto, user_id)
+            user_data[user_id]['wallets'][crypto]['BUY']['int']['GAS_DELTA']['value'] = 0.001
+        else:
+            keyboard = config_sell_wallet_keyboard(crypto, user_id)
+            user_data[user_id]['wallets'][crypto]['SELL']['int']['GAS_DELTA']['value'] = 0.001
     print("Erase value of gas delta wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
@@ -497,13 +486,13 @@ async def pia_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def receive_pia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new pia value from the user input
-        chain = context.user_data.get('chain')
         new_pia = int(update.message.text)
 
         # Update the chain's pia value in user data
-        user_data[user_id]['wallets'][chain]['BUY']['int']['PIA']['value'] = new_pia
+        user_data[user_id]['wallets'][chain][context.user_data['BorS']]['int']['PIA']['value'] = new_pia
         text = f"pia for the {chain} chain updated to {new_pia}."
         await reply_message_conv(update, user_id, text)
 
@@ -514,6 +503,8 @@ async def receive_pia(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
+
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -529,12 +520,19 @@ async def erase_pia_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_id = query.from_user.id
     await query.answer()
     BorS = context.user_data.get('BorS')
+
     if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
-    if crypto in user_data[user_id]['wallets']:
         user_data[user_id]['wallets'][crypto]['BUY']['int']['PIA']['value'] = 25
+    elif BorS == 'SELL':
+        user_data[user_id]['wallets'][crypto]['SELL']['int']['PIA']['value'] = 25
+
+    if crypto in user_data[user_id]['wallets']:
+        if BorS == 'BUY':
+            user_data[user_id]['wallets'][crypto]['BUY']['int']['PIA']['value'] = 25
+            keyboard = config_buy_wallet_keyboard(crypto, user_id)
+        elif BorS == 'SELL' :
+            user_data[user_id]['wallets'][crypto]['SELL' ]['int']['PIA']['value'] = 25
+            keyboard = config_sell_wallet_keyboard(crypto, user_id)
     print("Erase value of pia wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
@@ -547,13 +545,13 @@ async def slippage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
 async def receive_slippage(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
     try:
         # Get the chain and new slippage value from the user input
-        chain = context.user_data.get('chain')
         new_slippage = int(update.message.text)
 
         # Update the chain's slippage value in user data
-        user_data[user_id]['wallets'][chain]['BUY']['int']['SLIPPAGE']['value'] = new_slippage
+        user_data[user_id]['wallets'][chain][context.user_data['BorS']]['int']['SLIPPAGE']['value'] = new_slippage
         text = f"slippage for the {chain} chain updated to {new_slippage}."
         await reply_message_conv(update, user_id, text)
 
@@ -564,6 +562,7 @@ async def receive_slippage(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     # Delete conversation messages
     await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
 
     # Print user data for verification
     user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
@@ -574,24 +573,171 @@ async def receive_slippage(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Function to cancel the operation
 
 async def erase_slippage_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    crypto = query.data.split('_')[-1]
-    user_id = query.from_user.id
-    await query.answer()
-    BorS = context.user_data.get('BorS')
-    if BorS == 'BUY':
-        keyboard = config_buy_wallet_keyboard(crypto, user_id)
-    else:
-        keyboard = config_sell_wallet_keyboard(crypto, user_id)
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
     if crypto in user_data[user_id]['wallets']:
-        user_data[user_id]['wallets'][crypto]['BUY']['int']['SLIPPAGE']['value'] = 0
+        if BorS == 'BUY':
+            user_data[user_id]['wallets'][crypto]['BUY']['int']['SLIPPAGE']['value'] = 0
+        else:
+            user_data[user_id]['wallets'][crypto]['SELL']['int']['SLIPPAGE']['value'] = 0
     print("Erase value of slippage wallet for " + crypto + "...")
     print(query.data)
     print(context.user_data)
     await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
                                   reply_markup=keyboard)
 
+async def sell_high_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int :
+    print("sell_high_wallet")
+    return await awaiting_value_response(context, update, 'sell high')
 
+async def receive_sell_high(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
+    try:
+        # Get the chain and new slippage value from the user input
+        new_value = int(update.message.text)
+
+        # Update the chain's slippage value in user data
+        user_data[user_id]['wallets'][chain]['SELL']['int']['SELL_HIGH']['value'] = new_value
+        text = f"slippage for the {chain} chain updated to {new_value}."
+        await reply_message_conv(update, user_id, text)
+
+    except ValueError:
+        # Handle invalid input (non-integer value)
+        message = await update.message.reply_text("Invalid value. Please provide an integer for the sell high value.")
+        message_ids[user_id]['bot'].append(message.message_id)
+
+    # Delete conversation messages
+    await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
+
+    # Print user data for verification
+    user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+    print(user_data_json)
+
+    return ConversationHandler.END
+
+async def erase_sell_high(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
+    if crypto in user_data[user_id]['wallets']:
+            user_data[user_id]['wallets'][crypto]['SELL']['int']['SELL_HIGH']['value'] = 0
+    print("Erase value of slippage wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
+async def sell_low_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int :
+    print("sell_low_wallet")
+    return await awaiting_value_response(context, update, 'sell low')
+
+async def receive_sell_low(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
+    try:
+        # Get the chain and new slippage value from the user input
+        new_value = int(update.message.text)
+
+        # Update the chain's slippage value in user data
+        user_data[user_id]['wallets'][chain]['SELL']['int']['SELL_LOW']['value'] = new_value
+        text = f"slippage for the {chain} chain updated to {new_value}."
+        await reply_message_conv(update, user_id, text)
+
+    except ValueError:
+        # Handle invalid input (non-integer value)
+        message = await update.message.reply_text("Invalid value. Please provide an integer for the sell high value.")
+        message_ids[user_id]['bot'].append(message.message_id)
+
+    # Delete conversation messages
+    await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
+
+    # Print user data for verification
+    user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+    print(user_data_json)
+
+    return ConversationHandler.END
+
+async def erase_sell_low(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
+    if crypto in user_data[user_id]['wallets']:
+            user_data[user_id]['wallets'][crypto]['SELL']['int']['SELL_LOW']['value'] = 0
+    print("Erase value of slippage wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
+async def sell_high_amount_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    print("sell_high_amount_wallet")
+    return await awaiting_value_response(context, update, 'sell high amount')
+
+async def receive_sell_high_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
+    try:
+        # Get the chain and new slippage value from the user input
+        new_value = int(update.message.text)
+
+        # Update the chain's slippage value in user data
+        user_data[user_id]['wallets'][chain]['SELL']['int']['SELL_HIGH_AMOUNT']['value'] = new_value
+        text = f"slippage for the {chain} chain updated to {new_value}."
+        await reply_message_conv(update, user_id, text)
+
+    except ValueError:
+        # Handle invalid input (non-integer value)
+        message = await update.message.reply_text("Invalid value. Please provide an integer for the sell high value.")
+        message_ids[user_id]['bot'].append(message.message_id)
+
+    # Delete conversation messages
+    await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
+
+    # Print user data for verification
+    user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+    print(user_data_json)
+
+    return ConversationHandler.END
+
+async def erase_sell_high_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    BorS, crypto, keyboard, query, user_id = await gen_keyboard_config_wallet(context, update)
+    if crypto in user_data[user_id]['wallets']:
+            user_data[user_id]['wallets'][crypto]['SELL']['int']['SELL_HIGH_AMOUNT']['value'] = 0
+    print("Erase value of the sell high amount wallet for " + crypto + "...")
+    print(query.data)
+    print(context.user_data)
+    await query.edit_message_text(text_wallet_menu(crypto, user_id), parse_mode="MarkdownV2",
+                                  reply_markup=keyboard)
+
+async def sell_low_amount_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    print("sell_low_amount_wallet")
+    return await awaiting_value_response(context, update, 'sell low amount')
+
+async def receive_sell_low_amount(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    user_id = update.effective_user.id
+    chain = context.user_data.get('chain')
+    try:
+        # Get the chain and new slippage value from the user input
+        new_value = int(update.message.text)
+
+        # Update the chain's slippage value in user data
+        user_data[user_id]['wallets'][chain]['SELL']['int']['SELL_LOW_AMOUNT']['value'] = new_value
+        text = f"slippage for the {chain} chain updated to {new_value}."
+        await reply_message_conv(update, user_id, text)
+
+    except ValueError:
+        # Handle invalid input (non-integer value)
+        message = await update.message.reply_text("Invalid value. Please provide an integer for the sell high value.")
+        message_ids[user_id]['bot'].append(message.message_id)
+
+    # Delete conversation messages
+    await delete_conv(update, user_id)
+    await update_original_message(context, user_id, chain)
+
+    # Print user data for verification
+    user_data_json = json.dumps(user_data, indent=4, ensure_ascii=False)
+    print(user_data_json)
+
+    return ConversationHandler.EN
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Operation cancelled.")
@@ -728,7 +874,7 @@ def config_buy_wallet_keyboard(crypto: str, user_id) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(get_button_config_name("DUPE_BUY", crypto, user_id, 'BUY'),
                               callback_data='dupe_buy_wallet_' + crypto),
          InlineKeyboardButton(get_button_config_name("AUTO_BUY", crypto, user_id, 'BUY'),
-                              callback_data='auto_buy_wallet_' + crypto)],
+                              callback_data='auto_buy_sell_wallet_' + crypto)],
         [InlineKeyboardButton(get_button_config_name("MIN_MC", crypto, user_id, 'BUY'),
                               callback_data='min_mc_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC", callback_data='erase_min_mc_wallet_' + crypto)],
@@ -761,11 +907,11 @@ def config_sell_wallet_keyboard(crypto: str, user_id) -> InlineKeyboardMarkup:
         button_bot_name(),
         [InlineKeyboardButton("🔙 Return", callback_data='config_wallet_' + crypto)],
         [InlineKeyboardButton(get_button_config_name("CONFIRM_SELL", crypto, user_id, 'SELL'),
-                              callback_data='confirm_sell_wallet_' + crypto)],
+                              callback_data='confirm_trade_wallet_' + crypto)],
         [InlineKeyboardButton(get_button_config_name("DUPE_SELL", crypto, user_id, 'SELL'),
                               callback_data='dupe_sell_wallet_' + crypto),
          InlineKeyboardButton(get_button_config_name("AUTO_SELL", crypto, user_id, 'SELL'),
-                              callback_data='auto_sell_wallet_' + crypto)],
+                              callback_data='auto_buy_sell_wallet_' + crypto)],
         [InlineKeyboardButton(get_button_config_name("MIN_MC_SELL", crypto, user_id, 'SELL'),
                               callback_data='min_mc_sell_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC", callback_data='erase_min_mc_sell_wallet_' + crypto)],
@@ -781,14 +927,14 @@ def config_sell_wallet_keyboard(crypto: str, user_id) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(get_button_config_name("MIN_MC_LIQ_SELL", crypto, user_id, 'SELL'),
                               callback_data='min_mc_liq_sell_wallet_' + crypto),
          InlineKeyboardButton("⌫ Min MC/Liq", callback_data='erase_min_mc_liq_sell_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_config_name("GAS_DELTA_SELL", crypto, user_id, 'SELL'),
-                              callback_data='gas_delta_sell_wallet_' + crypto),
-         InlineKeyboardButton("⌫ Gas Delta", callback_data='erase_gd_sell_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_config_name("PIA_SELL", crypto, user_id, 'SELL'), callback_data='pia_sell_wallet_' + crypto),
-         InlineKeyboardButton("⌫ PIA", callback_data='erase_pia_sell_wallet_' + crypto)],
-        [InlineKeyboardButton(get_button_config_name("SLIPPAGE_SELL", crypto, user_id, 'SELL'),
-                              callback_data='slippage_sell_wallet_' + crypto),
-            InlineKeyboardButton("⌫ Slippage", callback_data='erase_slippage_sell_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_config_name("GAS_DELTA", crypto, user_id, 'SELL'),
+                              callback_data='gas_delta_wallet_' + crypto),
+         InlineKeyboardButton("⌫ Gas Delta", callback_data='erase_gdl_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_config_name("PIA", crypto, user_id, 'SELL'), callback_data='pia_wallet_' + crypto),
+         InlineKeyboardButton("⌫ PIA", callback_data='erase_pia_wallet_' + crypto)],
+        [InlineKeyboardButton(get_button_config_name("SLIPPAGE", crypto, user_id, 'SELL'),
+                              callback_data='slippage_wallet_' + crypto),
+            InlineKeyboardButton("⌫ Slippage", callback_data='erase_slippage_wallet_' + crypto)],
     ]
     return InlineKeyboardMarkup(keyboard)
 
