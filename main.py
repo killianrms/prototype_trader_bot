@@ -664,6 +664,15 @@ if __name__ == '__main__':
         fallbacks=[CommandHandler('cancel', cancel)],
     )
 
+    conv_handler_wallet_sell_low_amount = ConversationHandler(
+        entry_points=[CallbackQueryHandler(sell_low_amount_wallet, pattern='sell_low_amount_wallet_.*')],
+        states={
+            AWAITING_CHANGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_sell_low_amount)],
+        },
+        fallbacks=[CommandHandler('cancel', cancel)],
+    )
+
+
     application.add_handler(CallbackQueryHandler(config_sell_wallet, pattern='config_sell_wallet_.*'))
     application.add_handler(conv_handler_wallet_slippage)
     application.add_handler(conv_handler_wallet_pia)
@@ -677,6 +686,7 @@ if __name__ == '__main__':
     application.add_handler(conv_handler_wallet_sell_low)
     application.add_handler(conv_handler_wallet_sell_high)
     application.add_handler(conv_handler_wallet_sell_high_amount)
+    application.add_handler(conv_handler_wallet_sell_low_amount)
 
     application.add_handler(CallbackQueryHandler(erase_gas_delta_wallet, pattern='erase_gd_wallet_.*'))
     application.add_handler(CallbackQueryHandler(erase_min_mc_wallet, pattern='erase_min_mc_wallet_.*'))
@@ -689,9 +699,13 @@ if __name__ == '__main__':
     application.add_handler(CallbackQueryHandler(erase_sell_high, pattern='erase_sell_high_wallet_.*'))
     application.add_handler(CallbackQueryHandler(erase_sell_low, pattern='erase_sell_low_wallet_.*'))
     application.add_handler(CallbackQueryHandler(erase_sell_high_amount, pattern='erase_sell_high_amount_wallet_.*'))
+    application.add_handler(CallbackQueryHandler(erase_sell_low_amount, pattern='erase_sell_low_amount_wallet_.*'))
 
+    application.add_handler(CallbackQueryHandler(trailing_sell_wallet, pattern='trailing_sell_wallet_*'))
+    application.add_handler(CallbackQueryHandler(auto_sell, pattern='auto_sell_wallet_*'))
+    application.add_handler(CallbackQueryHandler(auto_sell_retry, pattern='auto_sell_retry_wallet_*'))
     # Error handler
     application.add_error_handler(error)
 
     # Start polling
-    application.run_polling(5)
+    application.run_polling(1)
